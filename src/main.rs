@@ -1,6 +1,6 @@
 use iced::{Element, Center, Size, Pixels, Theme, Subscription};
 use iced::widget::{button, column, row, text, space, container, combo_box};
-use iced::time::{self, Duration, Instant, seconds};
+use iced::time::{self, Instant, seconds};
 
 use num_format::{Locale, ToFormattedString};
 
@@ -14,25 +14,34 @@ use structs::{SearchFilter, AppPages};
 
 pub const APP_VERSION: &str = "0.2.";
 pub const BOND_ID: usize = 13190;
-pub const USER_AGENT_MESSAGE: &str = "N3cro0oDev (necro0o) - GE Price Calc Prototype";
+pub const USER_AGENT_MESSAGE: &str = "N3cro0oDev (discord: necro0o) - GE Price Calc Prototype";
 pub const APP_SPACING: Pixels = Pixels(5.0);
 pub const APP_PADDING: Pixels = Pixels(5.0);
 pub const COMBOBOX_MENU_HEIGHT: f32 = 300.0;
+pub const ALCHEMY_DAILY_VOLUME_LIMIT: usize = 100;
+pub const ALCHEMY_VEC_SIZE: usize = 15;
 
 pub struct MainLayout {
 	start_time: Instant,
     pub _debug_value: bool,
 	pub data: Vec<osrs::DataHolder>,
+	pub latest_ge_data: osrs::LatestData,
 	pub combo_data: combo_box::State<osrs::DataHolder>,
 	pub item_volume: osrs::VolumeData,
 	pub bond_sell_price: Option<usize>,
-	pub picked_items: Vec<osrs::DataHolder>,
 	pub last_item: Option<osrs::DataHolder>,
 	pub last_item_ge: Option<osrs::GEData>,
 	pub title: String,
 	pub theme: Option<Theme>,
 	pub current_page: AppPages,
-	pub combo_current_filter: Option<SearchFilter>,
+	
+	pub saved_items_item_view: Vec<osrs::DataHolder>,
+	pub combo_current_filter_item_view: Option<SearchFilter>,
+	
+	pub fav_items_alchemy: Vec<osrs::DataHolder>,
+	pub search_filter_alchemy: Option<SearchFilter>,
+	pub best_items_alchemy: Vec<(usize, isize)>,
+	pub table_vec_offset: usize,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -48,6 +57,8 @@ pub enum Message {
 	ComboNewFilter(Option<SearchFilter>),
 	OpenWiki,
 	RefreshTick(Instant),
+	AlchemyIncreaseOffset,
+	AlchemyDecreaseOffset,
 }
 
 impl MainLayout {
@@ -59,15 +70,22 @@ impl MainLayout {
 			_debug_value: false,
 			data: vec![],
 			combo_data: combo_box::State::new(vec),
+			latest_ge_data: osrs::LatestData::default(),
 			item_volume: osrs::VolumeData::default(),
 			bond_sell_price: None,
 			last_item: None,
 			last_item_ge: None,
-			picked_items: vec![],
 			title: "OSRS GE Calculator".to_string(),
 			theme,
 			current_page: AppPages::ItemView,
-			combo_current_filter: None,
+			
+			saved_items_item_view: vec![],
+			combo_current_filter_item_view: None,
+			
+			fav_items_alchemy: vec![],
+			search_filter_alchemy: None,
+			best_items_alchemy: vec![],
+			table_vec_offset: 0,
 		};
 		layout.update(Message::RefreshData);
 		layout
@@ -219,12 +237,18 @@ impl MainLayout {
 			}
 			
 			Message::ChangePage(page) => {
+				match page {
+					AppPages::Alchemy => {
+						self.calculate_best_alchemy();
+					}
+					_ => (),
+				}
 				self.current_page = page;
 				println!("{}", self.current_page.return_current_page_info());
 			}
 			
 			Message::ComboNewFilter(filter) => {
-				self.combo_current_filter = filter;
+				self.combo_current_filter_item_view = filter;
 				self.create_combo_box_data();
 			}
 			
@@ -239,19 +263,76 @@ impl MainLayout {
 				self.create_combo_box_data();
 			}
 			
+			Message::AlchemyDecreaseOffset => {
+				if self.table_vec_offset != 0 {
+					self.table_vec_offset -= 1;
+				}
+				println!("Offset {}, size {}", self.table_vec_offset * ALCHEMY_VEC_SIZE, self.best_items_alchemy.len());
+			}	
+			
+			Message::AlchemyIncreaseOffset => {
+				if (self.table_vec_offset + 1) * ALCHEMY_VEC_SIZE < self.best_items_alchemy.len() {
+					self.table_vec_offset += 1;
+				}
+				println!("Offset {}, size {}", self.table_vec_offset * ALCHEMY_VEC_SIZE, self.best_items_alchemy.len());
+			}
+			
 			_ => {
 				println!("JP2 GMD");
 			}
 		}
     }
 	
-	fn create_combo_box_data(&mut self) {
+	pub fn get_item_by_id (&self, id: usize) -> Option<&osrs::DataHolder> {
+		match self.data.iter().find(|thing| thing.id == id) {
+			Some(data) => Some(&data),
+			None => None,
+		}
+	}
+	
+	fn calculate_best_alchemy(&mut self) {
+		let options = self.create_filtered_vec(&self.search_filter_alchemy);
+		let mut output: Vec<(usize, isize)> = vec![];
+		for item in options {
+			// volume check
+			let volume = match self.item_volume.find(item.id) {
+				Some(data) => data,
+				None => continue,
+			};
+			if volume < ALCHEMY_DAILY_VOLUME_LIMIT { continue };
+			// calc alchemy cost
+			let data = item.basic_data().2;
+			let value = match self.latest_ge_data.get_data_by_id(item.id) {
+				Some(data) => {
+					match data.buy_price() {
+						Some(val) => val,
+						None => continue,
+					}
+				}
+				None => continue,
+			};
+			let diff: isize = data as isize - value as isize;
+			output.push((item.id, diff));
+		}
+		output.sort_by(|a, b| b.1.cmp(&a.1));
+		for i in 0..10 {
+			println!("{}, {}", output[i].0, output[i].1);
+		}
+		self.best_items_alchemy = output;
+	}
+	
+	pub fn create_filtered_vec(&self, filter: &Option<SearchFilter>) -> Vec<osrs::DataHolder> {
 		let mut new_vec = vec![];
 		for item in self.data.iter() {
-			if item.check_filter(&self.combo_current_filter) {
+			if item.check_filter(filter) {
 				new_vec.push(item.clone());
 			}
 		}
+		new_vec
+	}
+	
+	fn create_combo_box_data(&mut self) {
+		let new_vec = self.create_filtered_vec(&self.combo_current_filter_item_view);
 		self.combo_data = combo_box::State::new(new_vec);
 	}
 	
@@ -259,7 +340,7 @@ impl MainLayout {
 		if let None = self.last_item {
 			return Err((1, String::from("No selected item")));
 		}
-		self.picked_items.push(self.last_item.clone().unwrap());
+		self.saved_items_item_view.push(self.last_item.clone().unwrap());
 		Ok(())
 	}
 	
@@ -268,8 +349,8 @@ impl MainLayout {
 			return Err((1, String::from("No selected item")));
 		}
 		let last_item = self.last_item.clone().unwrap(); 
-		if let Some(pos) = self.picked_items.iter().position(|vec_item| vec_item.id == last_item.id) {
-			let _ = self.picked_items.remove(pos);
+		if let Some(pos) = self.saved_items_item_view.iter().position(|vec_item| vec_item.id == last_item.id) {
+			let _ = self.saved_items_item_view.remove(pos);
 		}
 		Ok(())
 	}
@@ -298,6 +379,7 @@ impl MainLayout {
 		let result = self.refresh_item_data();
 		if let Ok(_) = result {
 			self.refresh_volume_data()?;
+			self.refresh_latest_data()?;
 		}
 		result
 	}
@@ -342,6 +424,27 @@ impl MainLayout {
 			}
 		};
 		self.item_volume = data;
+		Ok(())
+	}	
+	
+	fn refresh_latest_data(&mut self) -> Result<(), String> {
+		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v1/osrs/latest") {
+			Ok(resp) => resp,
+			Err(err) => {
+				return Err(err.to_string());
+			}
+		};
+		if !response.status().is_success(){
+			return Err(format!("Response failed. {}", response.status()));
+		}
+		let body = response.text().unwrap();
+		let data = match serde_json::from_str::<osrs::LatestData>(&body) {
+			Ok(vec) => vec,
+			Err(err) => {
+				return Err(err.to_string());
+			}
+		};
+		self.latest_ge_data = data;
 		Ok(())
 	}
 	

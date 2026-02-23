@@ -1,10 +1,11 @@
 use iced::{Element, Center, Length};
-use iced::widget::{button, column, row, text, center, space, container, combo_box};
+use iced::widget::{button, column, row, text, center, space, container, combo_box, table, scrollable};
 
 use num_format::{Locale, ToFormattedString};
 
 use crate::{Message, MainLayout};
-use crate::{APP_PADDING, APP_SPACING, COMBOBOX_MENU_HEIGHT};
+use crate::{APP_PADDING, APP_SPACING, COMBOBOX_MENU_HEIGHT, ALCHEMY_VEC_SIZE};
+use crate::osrs::DataHolder;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchFilter {
@@ -65,7 +66,7 @@ impl AppPages {
 	
 	fn item_sidebar_view<'a>(&self, state: &'a MainLayout) -> Element<'a, Message> {
 		let mut button_vec: Vec<Element<'_, Message>> = vec![];
-		for data in state.picked_items.iter(){
+		for data in state.saved_items_item_view.iter(){
 			button_vec.push(
 				button(text(data.short_description()))
 				.on_press_with(|| Message::SelectItem(data.clone()))
@@ -154,7 +155,7 @@ impl AppPages {
 			let message;
 			let curr_item = state.last_item.clone();
 			if let Some(item) = curr_item {
-				if let Some(_) = state.picked_items.iter().find(|vec_item| vec_item.id == item.id) {
+				if let Some(_) = state.saved_items_item_view.iter().find(|vec_item| vec_item.id == item.id) {
 					label = "forget item";
 					message = Message::RemoveItemFromSaved;
 				}
@@ -179,7 +180,7 @@ impl AppPages {
 		};
 		let member_button = {
 			let label = "non-member items";
-			let new_member_filter = state.combo_current_filter.clone().unwrap_or_default().flip_member_items();
+			let new_member_filter = state.combo_current_filter_item_view.clone().unwrap_or_default().flip_member_items();
 			button(label)
 				.style(
 					if !new_member_filter.only_non_member_items {
@@ -221,9 +222,64 @@ impl AppPages {
 	}
 
 	fn alch_body_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
+		let table = {
+			let columns = [
+				table::column("ID", |data: &(usize, isize)| text(data.0)),
+				table::column("Name", |data: &(usize, isize)| {
+					match state.get_item_by_id(data.0) {
+						Some(item) => text(item.name()),
+						None => text("Cannot get item"),
+					}
+				}),
+				table::column("Value", |data: &(usize, isize)| {
+					match state.get_item_by_id(data.0) {
+						Some(item) => text(item.basic_data().0),
+						None => text("Cannot get item"),
+					}
+				}),
+				table::column("High Alchemy", |data: &(usize, isize)| {
+					match state.get_item_by_id(data.0) {
+						Some(item) => text(item.basic_data().2),
+						None => text("Cannot get item"),
+					}
+				}),
+				table::column("GE Price", |data: &(usize, isize)| {
+					if let Some(ge_data) = state.latest_ge_data.get_data_by_id(data.0) {
+						match ge_data.buy_price() {
+							Some(v) => text(v),
+							None => text("Cannot get price data"),
+						}
+					}
+					else {
+						text("Cannot get price data")
+					}
+					}),
+				table::column("Difference", |data: &(usize, isize)| text(data.1)),
+				];
+			let start_offset = (ALCHEMY_VEC_SIZE * state.table_vec_offset) as usize;
+			let end_offset = {
+				if ALCHEMY_VEC_SIZE + start_offset > state.best_items_alchemy.len() {
+					state.best_items_alchemy.len() - ALCHEMY_VEC_SIZE
+				}
+				else {
+					start_offset
+				}
+			};
+			println!("Offsets [{start_offset} - {})", ALCHEMY_VEC_SIZE + end_offset);
+			table(columns, &state.best_items_alchemy[0 + start_offset..ALCHEMY_VEC_SIZE + end_offset])
+		};
+		let table_buttons = row![
+			button("Previous")
+				.on_press(Message::AlchemyDecreaseOffset),
+			button("Next")
+				.on_press(Message::AlchemyIncreaseOffset),
+			]
+			.padding(APP_PADDING)
+			.spacing(200);
 		let main = center(
 			column![
-					text("To be implemented")
+					scrollable(table),
+					table_buttons
 				]
 				.align_x(Center)
 			)

@@ -16,11 +16,13 @@ pub struct DataHolder {
 	highalch: Option<usize>
 }
 
-#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct GEData {
 	high: Option<usize>,
+	#[serde(rename = "highTime")]
 	high_time: Option<usize>,
 	low: Option<usize>,
+	#[serde(rename = "lowTime")]
 	low_time: Option<usize>,
 }
 
@@ -28,6 +30,11 @@ pub struct GEData {
 pub struct VolumeData {
 	timestamp: usize,
 	data: HashMap<String, usize>,
+}
+
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+pub struct LatestData {
+	data: HashMap<String, GEData>,
 }
 
 impl DataHolder {
@@ -86,8 +93,22 @@ impl GEData {
 		tuple
 	}
 	
-		pub fn sell_price(&self) -> Option<usize> {
+	pub fn sell_price(&self) -> Option<usize> {
 		self.high.clone()
+	}
+	
+	pub fn buy_price(&self) -> Option<usize> {
+		self.low.clone()
+	}
+}
+
+impl fmt::Display for GEData {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let high = self.high.unwrap_or_default();
+		let low = self.low.unwrap_or_default();
+		let high_time = self.high_time.unwrap_or_default();
+		let low_time = self.low_time.unwrap_or_default();
+		write!(f, "High price: {} ({}), low price: {}({})", high, high_time, low, low_time)
 	}
 }
 
@@ -95,5 +116,11 @@ impl VolumeData {
 	pub fn find(&self, id: usize) -> Option<usize> {
 		let id_str: String = id.to_string();
 		self.data.get(&id_str).copied()
+	}
+}
+
+impl LatestData {
+	pub fn get_data_by_id(&self, id: usize) -> Option<GEData> {
+		self.data.get(&id.to_string()).copied()
 	}
 }
