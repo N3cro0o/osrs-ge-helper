@@ -1,5 +1,6 @@
-use iced::{Element, Center, Size, Pixels, Theme};
+use iced::{Element, Center, Size, Pixels, Theme, Subscription};
 use iced::widget::{button, column, row, text, space, container, combo_box};
+use iced::time::{self, Duration, Instant, seconds};
 
 use num_format::{Locale, ToFormattedString};
 
@@ -11,15 +12,15 @@ mod structs;
 
 use structs::{SearchFilter, AppPages};
 
-pub const APP_VERSION: &str = "0.1.";
+pub const APP_VERSION: &str = "0.2.";
 pub const BOND_ID: usize = 13190;
 pub const USER_AGENT_MESSAGE: &str = "N3cro0oDev (necro0o) - GE Price Calc Prototype";
 pub const APP_SPACING: Pixels = Pixels(5.0);
 pub const APP_PADDING: Pixels = Pixels(5.0);
 pub const COMBOBOX_MENU_HEIGHT: f32 = 300.0;
 
-#[derive(Default)]
 pub struct MainLayout {
+	start_time: Instant,
     pub _debug_value: bool,
 	pub data: Vec<osrs::DataHolder>,
 	pub combo_data: combo_box::State<osrs::DataHolder>,
@@ -46,13 +47,15 @@ pub enum Message {
 	RemoveItemFromSaved,
 	ComboNewFilter(Option<SearchFilter>),
 	OpenWiki,
+	RefreshTick(Instant),
 }
 
 impl MainLayout {
-	pub fn default() -> Self {
+	pub fn new() -> Self {
 		let vec: Vec<osrs::DataHolder> = vec![];
 		let theme = Some(Theme::CatppuccinFrappe);
 		let mut layout = MainLayout {
+			start_time: Instant::now(),
 			_debug_value: false,
 			data: vec![],
 			combo_data: combo_box::State::new(vec),
@@ -73,6 +76,10 @@ impl MainLayout {
 	fn title(&self) -> String {
         format!("N3cro0oDev - {}", self.title)
     }
+	
+	fn subscription(&self) -> Subscription<Message> {
+		time::every(seconds(60)).map(Message::RefreshTick)
+	}
 	
     pub fn view(&self) -> Element<'_, Message> {
 		let headline = container(
@@ -101,10 +108,10 @@ impl MainLayout {
 									button::primary
 								}
 								)
-							// .on_press_maybe(
-								// (self.current_page != AppPages::Alchemy)
-									// .then_some(Message::ChangePage(AppPages::Alchemy))
-								// )
+							.on_press_maybe(
+								(self.current_page != AppPages::Alchemy)
+									.then_some(Message::ChangePage(AppPages::Alchemy))
+								)
 							.padding([5,10]),
 						button(text("Recipe calculator"))
 							.style(
@@ -115,10 +122,10 @@ impl MainLayout {
 									button::primary
 								}
 								)
-							// .on_press_maybe(
-								// (self.current_page != AppPages::Calculator)
-									// .then_some(Message::ChangePage(AppPages::Calculator))
-								// )
+							.on_press_maybe(
+								(self.current_page != AppPages::Calculator)
+									.then_some(Message::ChangePage(AppPages::Calculator))
+								)
 							.padding([5,10]),
 						space::horizontal(),
 						text(format!("Bond price: {} gp", self.bond_sell_price.unwrap_or_default().to_formatted_string(&Locale::en))),
@@ -218,6 +225,17 @@ impl MainLayout {
 			
 			Message::ComboNewFilter(filter) => {
 				self.combo_current_filter = filter;
+				self.create_combo_box_data();
+			}
+			
+			Message::RefreshTick(now) => {
+				println!("Auto-refresh data from OSRS wiki at {}s ...", now.duration_since(self.start_time).as_secs_f32());
+				match self.refresh_data() {
+					Ok(size) => println!("Done. Found {size} items"),
+					Err(err) => println!("{err}"),
+				};
+				self.bond_sell_price = self.get_price_from_id(BOND_ID).sell_price();
+				self._debug_value = !self._debug_value;
 				self.create_combo_box_data();
 			}
 			
@@ -340,6 +358,12 @@ impl MainLayout {
 	}
 }
 
+impl Default for MainLayout {
+	fn default() -> Self {
+		MainLayout::new()
+	}
+}
+
 fn main() -> iced::Result<> {
 	let mut window_settings = iced::window::Settings::default();
 	window_settings.min_size = Some(Size::new(1280.0,720.0));
@@ -350,6 +374,7 @@ fn main() -> iced::Result<> {
 		.window(window_settings)
 		.theme(MainLayout::theme)
 		.centered()
+		.subscription(MainLayout::subscription)
 		.title(MainLayout::title);
 	app.run()
 }

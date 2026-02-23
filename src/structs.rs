@@ -50,16 +50,16 @@ impl AppPages {
 	pub fn sidebar<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
 		match self {
 			AppPages::ItemView => self.item_sidebar_view(state),
-			AppPages::Alchemy => self.alch_sidebar_view(),
-			AppPages::Calculator => self.calc_sidebar_view(),
+			AppPages::Alchemy => self.alch_sidebar_view(state),
+			AppPages::Calculator => self.calc_sidebar_view(state),
 		}
 	}
 	
 	pub fn body<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
 		match self {
 			AppPages::ItemView => self.item_body_view(state),
-			AppPages::Alchemy => self.alch_body_view(),
-			AppPages::Calculator => self.calc_body_view(),
+			AppPages::Alchemy => self.alch_body_view(state),
+			AppPages::Calculator => self.calc_body_view(state),
 		}
 	}
 	
@@ -89,12 +89,34 @@ impl AppPages {
 		sidebar.into()
 	}
 
-	fn alch_sidebar_view(&self) -> Element<'_, Message> {
-		column!["JP2GMD"].into()
+	fn alch_sidebar_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
+		let sidebar = container(
+				column![
+						text("Favourites:").size(22),
+						space::vertical()
+					]
+					.spacing(APP_SPACING)
+					.padding(APP_PADDING)
+			)
+			.width(200)
+			.max_width(200)
+			.style(container::rounded_box);
+		sidebar.into()
 	}
 
-	fn calc_sidebar_view(&self) -> Element<'_, Message> {
-		column!["JP2GMD"].into()
+	fn calc_sidebar_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
+		let sidebar = container(
+				column![
+						text("Saved recipes:").size(22),
+						space::vertical()
+					]
+					.spacing(APP_SPACING)
+					.padding(APP_PADDING)
+			)
+			.width(200)
+			.max_width(200)
+			.style(container::rounded_box);
+		sidebar.into()
 	}
 	
 	fn item_body_view<'a>(&self, state: &'a MainLayout) -> Element<'a, Message> {
@@ -198,11 +220,27 @@ impl AppPages {
 		main.into()
 	}
 
-	fn alch_body_view(&self) -> Element<'_, Message> {
-		column!["JP2GMD"].into()
+	fn alch_body_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
+		let main = center(
+			column![
+					text("To be implemented")
+				]
+				.align_x(Center)
+			)
+			.padding(APP_PADDING)
+			.style(container::rounded_box);
+		main.into()
 	}
 
-	fn calc_body_view(&self) -> Element<'_, Message> {
-		column!["JP2GMD"].into()
+	fn calc_body_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
+		let main = center(
+			column![
+					text("To be implemented")
+				]
+				.align_x(Center)
+			)
+			.padding(APP_PADDING)
+			.style(container::rounded_box);
+		main.into()
 	}
 }
