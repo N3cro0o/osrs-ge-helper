@@ -19,7 +19,7 @@ pub const APP_SPACING: Pixels = Pixels(5.0);
 pub const APP_PADDING: Pixels = Pixels(5.0);
 pub const COMBOBOX_MENU_HEIGHT: f32 = 300.0;
 pub const ALCHEMY_DAILY_VOLUME_LIMIT: usize = 100;
-pub const ALCHEMY_VEC_SIZE: usize = 15;
+pub const ALCHEMY_VEC_SIZE: usize = 12;
 
 pub struct MainLayout {
 	start_time: Instant,
@@ -59,6 +59,8 @@ pub enum Message {
 	RefreshTick(Instant),
 	AlchemyIncreaseOffset,
 	AlchemyDecreaseOffset,
+	AlchemyCheckItem(osrs::DataHolder),
+	AlchemyAddToFav(osrs::DataHolder),
 }
 
 impl MainLayout {
@@ -87,7 +89,6 @@ impl MainLayout {
 			best_items_alchemy: vec![],
 			table_vec_offset: 0,
 		};
-		layout.update(Message::RefreshData);
 		layout
 	}
 	
@@ -204,7 +205,7 @@ impl MainLayout {
 					Ok(size) => println!("Done. Found {size} items"),
 					Err(err) => println!("{err}"),
 				};
-				self.bond_sell_price = self.get_price_from_id(BOND_ID).sell_price();
+				self.bond_sell_price = self.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
 				self._debug_value = !self._debug_value;
 				self.create_combo_box_data();
 			}
@@ -215,6 +216,10 @@ impl MainLayout {
 			
 			Message::AddItemToSaved => {
 				let _ = self.save_current_item();
+			}	
+
+			Message::AlchemyAddToFav(item) => {
+				let _ = self.alch_save_current_item(item);
 			}
 			
 			Message::OpenWiki => {
@@ -237,14 +242,7 @@ impl MainLayout {
 			}
 			
 			Message::ChangePage(page) => {
-				match page {
-					AppPages::Alchemy => {
-						self.calculate_best_alchemy();
-					}
-					_ => (),
-				}
-				self.current_page = page;
-				println!("{}", self.current_page.return_current_page_info());
+				self.update_page(page);
 			}
 			
 			Message::ComboNewFilter(filter) => {
@@ -258,7 +256,7 @@ impl MainLayout {
 					Ok(size) => println!("Done. Found {size} items"),
 					Err(err) => println!("{err}"),
 				};
-				self.bond_sell_price = self.get_price_from_id(BOND_ID).sell_price();
+				self.bond_sell_price = self.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
 				self._debug_value = !self._debug_value;
 				self.create_combo_box_data();
 			}
@@ -277,11 +275,27 @@ impl MainLayout {
 				println!("Offset {}, size {}", self.table_vec_offset * ALCHEMY_VEC_SIZE, self.best_items_alchemy.len());
 			}
 			
+			Message::AlchemyCheckItem(item) => {
+				self.update_page(AppPages::ItemView);
+				self.select_new_item(&item);
+			}
+			
 			_ => {
 				println!("JP2 GMD");
 			}
 		}
     }
+	
+	fn update_page(&mut self, page: AppPages) {
+		match page {
+			AppPages::Alchemy => {
+				self.calculate_best_alchemy();
+			}
+			_ => (),
+		}
+		self.current_page = page;
+		println!("{}", self.current_page.return_current_page_info());
+	}
 	
 	pub fn get_item_by_id (&self, id: usize) -> Option<&osrs::DataHolder> {
 		match self.data.iter().find(|thing| thing.id == id) {
@@ -314,6 +328,10 @@ impl MainLayout {
 			let diff: isize = data as isize - value as isize;
 			output.push((item.id, diff));
 		}
+		if output.is_empty() {
+			println!("ERROR. No alchemy data");
+			return;
+		}
 		output.sort_by(|a, b| b.1.cmp(&a.1));
 		for i in 0..10 {
 			println!("{}, {}", output[i].0, output[i].1);
@@ -342,6 +360,20 @@ impl MainLayout {
 		}
 		self.saved_items_item_view.push(self.last_item.clone().unwrap());
 		Ok(())
+	}	
+	
+	fn alch_save_current_item(&mut self, item: osrs::DataHolder) -> Result<bool, String> {
+		// Check for Item
+			// Add Item -> true
+			// Forget Item -> false
+		if let Some(pos) = self.fav_items_alchemy.iter().position(|fav_item| item == *fav_item) {
+			let _ = self.fav_items_alchemy.remove(pos);
+			Ok(false)
+		}
+		else {
+			self.fav_items_alchemy.push(item);
+			Ok(true)
+		}
 	}
 	
 	fn forget_current_item(&mut self) -> Result<(), (u8, String)> {
@@ -357,22 +389,32 @@ impl MainLayout {
 	
 	fn select_new_item(&mut self, item: &osrs::DataHolder){
 		println!("Selected new item: {}", item.id);
-		let data = self.get_price_from_id(item.id);
-		self.last_item_ge = Some(data);
-		self.last_item = Some(item.clone());
+		match self.get_price_from_id(item.id) {
+			Ok(data) => {
+				self.last_item_ge = Some(data);
+				self.last_item = Some(item.clone());
+			}
+			Err(err) => {
+				println!("{err}");
+			}
+		}
 	}
 	
-	fn get_price_from_id(&self, id: usize) -> osrs::GEData {
-		let client = Client::new();
-		let response = client.get(format!("https://prices.runescape.wiki/api/v1/osrs/latest?id={}", id))
-			.header(USER_AGENT, USER_AGENT_MESSAGE)
-			.send()
-			.unwrap();
-		let body = response.text().unwrap();
-		let index = body.find(&id.to_string()).unwrap();
-		let body = &body[index + &id.to_string().len() + 2 .. body.len() - 2];
-		let data = serde_json::from_str::<osrs::GEData>(&body).unwrap();
-		data
+	fn get_price_from_id(&self, id: usize) -> Result<osrs::GEData, String> {
+		// let response = match self.fetch_get_data(&format!("https://prices.runescape.wiki/api/v1/osrs/latest?id={}", id)) {
+			// Ok(data) => data,
+			// Err(err) => {
+				// return Err(err.to_string());
+			// }
+		// };
+		// let body = response.text().unwrap();
+		// let index = body.find(&id.to_string()).unwrap();
+		// let body = &body[index + &id.to_string().len() + 2 .. body.len() - 2];
+		// match serde_json::from_str::<osrs::GEData>(&body){
+			// Ok(data) => Ok(data),
+			// Err(err) => Err(err.to_string()),
+		// }
+		self.latest_ge_data.get_data_by_id(id).ok_or(format!("Cannot find desired item {id}"))
 	}
 	
 	fn refresh_data(&mut self) -> Result<usize, String> {
@@ -448,7 +490,7 @@ impl MainLayout {
 		Ok(())
 	}
 	
-	fn fetch_get_data(&mut self, url: &str) -> reqwest::Result<Response> {
+	fn fetch_get_data(&self, url: &str) -> reqwest::Result<Response> {
 		let client = Client::new();
 		let response = client.get(url)
 			.header(USER_AGENT, "N3cro0oDev (necro0o) - GE Price Calc Prototype")
