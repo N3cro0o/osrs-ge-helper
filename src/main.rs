@@ -42,10 +42,14 @@ pub struct MainLayout {
 	pub search_filter_alchemy: Option<SearchFilter>,
 	pub best_items_alchemy: Vec<(usize, isize)>,
 	pub table_vec_offset: usize,
+	
+	pub calc_curr_resources: Vec<(usize, usize)>, // 0 - ID, 1 - how many
+	pub calc_curr_products: Vec<(usize, usize)>, // 0 - ID, 1 - how many
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
+	Nothing,
     Increment,
     Decrement,
 	RefreshData,
@@ -61,6 +65,9 @@ pub enum Message {
 	AlchemyDecreaseOffset,
 	AlchemyCheckItem(osrs::DataHolder),
 	AlchemyAddToFav(osrs::DataHolder),
+	CalcAddResource(usize),
+	CalcAddProduct(usize),
+	CalcResetThis,
 }
 
 impl MainLayout {
@@ -88,7 +95,11 @@ impl MainLayout {
 			search_filter_alchemy: None,
 			best_items_alchemy: vec![],
 			table_vec_offset: 0,
+			
+			calc_curr_resources: vec![],
+			calc_curr_products: vec![],
 		};
+		layout.update(Message::RefreshData);
 		layout
 	}
 	
@@ -280,6 +291,32 @@ impl MainLayout {
 				self.select_new_item(&item);
 			}
 			
+			Message::CalcAddResource(item_id) => {
+				if let Some(item) = self.get_item_by_id(item_id) {
+					if let Some(pos) = self.calc_curr_resources.iter().position(|data_tuple| item_id == data_tuple.0) {
+						self.calc_curr_resources[pos].1 += 1;
+					}
+					else {
+						self.calc_curr_resources.push((item_id, 1));
+					}
+				}
+			}
+			Message::CalcAddProduct(item_id) => {
+				if let Some(item) = self.get_item_by_id(item_id) {
+					if let Some(pos) = self.calc_curr_products.iter().position(|data_tuple| item_id == data_tuple.0) {
+						self.calc_curr_products[pos].1 += 1;
+					}
+					else {
+						self.calc_curr_products.push((item_id, 1));
+					}
+				}
+			}
+			
+			Message::CalcResetThis => {
+				self.calc_curr_products.clear();
+				self.calc_curr_resources.clear();
+			}
+			
 			_ => {
 				println!("JP2 GMD");
 			}
@@ -291,7 +328,10 @@ impl MainLayout {
 			AppPages::Alchemy => {
 				self.calculate_best_alchemy();
 			}
-			_ => (),
+			_ => {
+				self.last_item = None;
+				self.last_item_ge = None;
+			}
 		}
 		self.current_page = page;
 		println!("{}", self.current_page.return_current_page_info());
@@ -333,9 +373,6 @@ impl MainLayout {
 			return;
 		}
 		output.sort_by(|a, b| b.1.cmp(&a.1));
-		for i in 0..10 {
-			println!("{}, {}", output[i].0, output[i].1);
-		}
 		self.best_items_alchemy = output;
 	}
 	
