@@ -12,7 +12,7 @@ use reqwest::blocking::{Client, Response};
 mod osrs;
 mod structs;
 
-use structs::{SearchFilter, AppPages, CurrentRecipe};
+use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot};
 
 pub const APP_VERSION: &str = "0.2.";
 pub const BOND_ID: usize = 13190;
@@ -25,6 +25,8 @@ pub const ALCHEMY_VEC_SIZE: usize = 12;
 
 pub struct MainLayout {
 	start_time: Instant,
+	plotter: ItemViewPlot,
+	
     pub _debug_value: bool,
 	pub data: Vec<osrs::DataHolder>,
 	pub latest_ge_data: osrs::LatestData,
@@ -79,6 +81,8 @@ impl MainLayout {
 		let theme = Some(Theme::CatppuccinFrappe);
 		let mut layout = MainLayout {
 			start_time: Instant::now(),
+			plotter: ItemViewPlot::default(),
+			
 			_debug_value: false,
 			data: vec![],
 			combo_data: combo_box::State::new(vec),
@@ -111,6 +115,10 @@ impl MainLayout {
 	
 	fn subscription(&self) -> Subscription<Message> {
 		time::every(seconds(60)).map(Message::RefreshTick)
+	}
+	
+	pub fn item_view_plot(&self) -> &ItemViewPlot {
+		&self.plotter
 	}
 	
     pub fn view(&self) -> Element<'_, Message> {
@@ -294,14 +302,14 @@ impl MainLayout {
 			}
 			
 			Message::CalcAddResource(item_id) => {
-				if let Some(item) = self.get_item_by_id(item_id) {
+				if let Some(_item) = self.get_item_by_id(item_id) {
 					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
 						holder.add_one_to_resources(item_id);
 					}
 				}
 			}
 			Message::CalcAddProduct(item_id) => {
-				if let Some(item) = self.get_item_by_id(item_id) {
+				if let Some(_item) = self.get_item_by_id(item_id) {
 					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
 						holder.add_one_to_products(item_id);
 					}
@@ -309,7 +317,7 @@ impl MainLayout {
 			}
 						
 			Message::CalcRemoveResource(item_id) => {
-				if let Some(item) = self.get_item_by_id(item_id) {
+				if let Some(_item) = self.get_item_by_id(item_id) {
 					if let CurrentRecipe::Loaded( holder) = &mut self.calc_curr_recipe {
 						if let Some(pos) = holder.resources_iter().position(|data_tuple| item_id == data_tuple.id()) { // check if exists
 							holder.remove_one_from_resources(pos);
@@ -319,7 +327,7 @@ impl MainLayout {
 			}
 			
 			Message::CalcRemoveProduct(item_id) => {
-				if let Some(item) = self.get_item_by_id(item_id) {
+				if let Some(_item) = self.get_item_by_id(item_id) {
 					if let CurrentRecipe::Loaded( holder) = &mut self.calc_curr_recipe {
 						if let Some(pos) = holder.products_iter().position(|data_tuple| item_id == data_tuple.id()) { // check if exists
 							holder.remove_one_from_products(pos);

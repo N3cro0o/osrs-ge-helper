@@ -2,11 +2,15 @@ use iced::{Element, Center, Length};
 use iced::widget::{button, column, row, text, center, space, container, combo_box, table, scrollable};
 use iced::alignment::Horizontal;
 
+use plotters::{coord::Shift, prelude::*};
+use plotters_backend::DrawingBackend;
+use plotters_iced2 as plotters_iced;
+use plotters_iced::{plotters_backend, Chart, ChartWidget, DrawingArea};
+
 use num_format::{Locale, ToFormattedString};
 
 use crate::{Message, MainLayout};
 use crate::{APP_PADDING, APP_SPACING, COMBOBOX_MENU_HEIGHT, ALCHEMY_VEC_SIZE};
-use crate::osrs::DataHolder;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchFilter {
@@ -31,6 +35,54 @@ pub struct RecipeHolder {
 pub enum CurrentRecipe {
 	Loaded(RecipeHolder),
 	Empty,
+}
+
+#[derive(Default)]
+pub struct ItemViewPlot {
+	item_id: usize,
+}
+
+impl ItemViewPlot {
+	pub fn view(&self) -> Element<'_, Message> {
+		let chart = ChartWidget::new(self)
+			.width(Length::Fixed(300.0))
+			.height(Length::Fixed(300.0));
+		
+		chart.into()
+	}
+}
+
+impl Chart<Message> for ItemViewPlot {
+    type State = ();
+    // leave it empty
+    fn build_chart<DB: DrawingBackend>(&self, _state: &Self::State, _builder: ChartBuilder<DB>) {}
+
+    fn draw_chart<DB: DrawingBackend>(&self, _state: &Self::State, root: DrawingArea<DB, Shift>) {
+        let mut builder = ChartBuilder::on(&root);
+		let mut chart = builder
+			.margin(30)
+			.caption(format!("y=x^{}", 1), ("sans-serif", 22))
+			.x_label_area_size(30)
+			.y_label_area_size(30)
+			.build_cartesian_2d(-1f32..1f32, -1.2f32..1.2f32)
+			.unwrap();
+
+		chart
+			.configure_mesh()
+			.x_labels(3)
+			.y_labels(3)
+			.draw()
+			.unwrap();
+
+		chart
+			.draw_series(LineSeries::new(
+				(-50..=50)
+					.map(|x| x as f32 / 50.0)
+					.map(|x| (x, x.powf(1 as f32))),
+				&RED,
+			))
+			.unwrap();
+    }
 }
 
 impl SearchFilter {
@@ -106,7 +158,6 @@ impl AppPages {
 	fn alch_sidebar_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
 		//state.best_items_alchemy
 		let mut data_vec: Vec<Element<'_, Message>> = vec![];
-		let mut text_vec: Vec<Element<'_, Message>> = vec![];
 		for data in state.fav_items_alchemy.iter(){
 			let diff = match state.best_items_alchemy.iter().find(|item| data.id == item.0) {
 				Some(item) => item.1,
@@ -132,7 +183,7 @@ impl AppPages {
 		sidebar.into()
 	}
 
-	fn calc_sidebar_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
+	fn calc_sidebar_view<'a>(&'a self, _state: &'a MainLayout) -> Element<'a, Message> {
 		let sidebar = container(
 				column![
 						text("Saved recipes:").size(22),
@@ -236,15 +287,20 @@ impl AppPages {
 			.style(container::rounded_box);
 			
 		let body = center(
-				column![
-						text(format!("Value: {}", value.to_formatted_string(&Locale::en))),
-						text(format!("Low Alch: {}", loalch.to_formatted_string(&Locale::en))),
-						text(format!("High Alch: {}", highalch.to_formatted_string(&Locale::en))),
-						space::vertical().height(Length::Fixed(100.0)),
-						text(format!("Instant buy: {}", insta_buy.to_formatted_string(&Locale::en))),
-						text(format!("Instant sell: {}", insta_sell.to_formatted_string(&Locale::en))),
-						text(format!("Daily volume: {}", volume.to_formatted_string(&Locale::en))),
+				row![
+						column![
+								text(format!("Value: {}", value.to_formatted_string(&Locale::en))),
+								text(format!("Low Alch: {}", loalch.to_formatted_string(&Locale::en))),
+								text(format!("High Alch: {}", highalch.to_formatted_string(&Locale::en))),
+								space::vertical().height(Length::Fixed(100.0)),
+								text(format!("Instant buy: {}", insta_buy.to_formatted_string(&Locale::en))),
+								text(format!("Instant sell: {}", insta_sell.to_formatted_string(&Locale::en))),
+								text(format!("Daily volume: {}", volume.to_formatted_string(&Locale::en))),
+							],
+						space::horizontal().width(Length::Fixed(200.0)),
+						state.item_view_plot().view(),
 					]
+					.spacing(APP_SPACING)
 			)
 			.height(Length::FillPortion(10))
 			.style(container::rounded_box);
