@@ -21,6 +21,18 @@ pub enum AppPages {
 	Calculator,
 }
 
+pub struct RecipeElement (usize, usize);
+
+pub struct RecipeHolder {
+	calc_curr_resources: Vec<RecipeElement>,
+	calc_curr_products: Vec<RecipeElement>,
+}
+
+pub enum CurrentRecipe {
+	Loaded(RecipeHolder),
+	Empty,
+}
+
 impl SearchFilter {
 	pub fn new() -> Self {
 		SearchFilter {
@@ -270,78 +282,78 @@ impl AppPages {
 	fn alch_body_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
 		let table = {
 			let columns = [
-				table::column("ID", |data: &(usize, isize)| text(data.0)).width(75),
-				table::column("Name", |data: &(usize, isize)| {
-					match state.get_item_by_id(data.0) {
-						Some(item) => text(item.name()),
-						None => text("Cannot get item"),
-					}
-				}).width(275),
-				table::column("Value", |data: &(usize, isize)| {
-					match state.get_item_by_id(data.0) {
-						Some(item) => text(item.basic_data().0),
-						None => text("Cannot get item"),
-					}
-				}).width(60),
-				table::column("Hi-Alch", |data: &(usize, isize)| {
-					match state.get_item_by_id(data.0) {
-						Some(item) => text(item.basic_data().2),
-						None => text("Cannot get item"),
-					}
-				}).width(60),
-				table::column("GE Price", |data: &(usize, isize)| {
-					if let Some(ge_data) = state.latest_ge_data.get_data_by_id(data.0) {
-						match ge_data.buy_price() {
-							Some(v) => text(v),
-							None => text("Cannot get price data"),
+					table::column("ID", |data: &(usize, isize)| text(data.0)).width(75),
+					table::column("Name", |data: &(usize, isize)| {
+						match state.get_item_by_id(data.0) {
+							Some(item) => text(item.name()),
+							None => text("Cannot get item"),
 						}
-					}
-					else {
-						text("Cannot get price data")
-					}
+					}).width(275),
+					table::column("Value", |data: &(usize, isize)| {
+						match state.get_item_by_id(data.0) {
+							Some(item) => text(item.basic_data().0),
+							None => text("Cannot get item"),
+						}
 					}).width(60),
-				table::column("Difference", |data: &(usize, isize)| text(data.1)).width(75),
-				table::column("", |data: &(usize, isize)| {
-					match state.get_item_by_id(data.0) {
-						Some(item) => {
-							button("Check")
-								.padding([3, 5])
-								.on_press(Message::AlchemyCheckItem(item.clone()))
-								
+					table::column("Hi-Alch", |data: &(usize, isize)| {
+						match state.get_item_by_id(data.0) {
+							Some(item) => text(item.basic_data().2),
+							None => text("Cannot get item"),
 						}
-						None => {
-							button("Check")
-								.padding([3, 5])
-						}
-					}
-				}),
-				table::column("", |data: &(usize, isize)| {
-					match state.get_item_by_id(data.0) {
-						Some(item) => {
-							let fav_check;
-							if let Some(_) = state.fav_items_alchemy.iter().find(|vec_item| vec_item.id == item.id) {
-								fav_check = true;
+					}).width(60),
+					table::column("GE Price", |data: &(usize, isize)| {
+						if let Some(ge_data) = state.latest_ge_data.get_data_by_id(data.0) {
+							match ge_data.buy_price() {
+								Some(v) => text(v),
+								None => text("Cannot get price data"),
 							}
-							else {
-								fav_check = false;
+						}
+						else {
+							text("Cannot get price data")
+						}
+						}).width(60),
+					table::column("Difference", |data: &(usize, isize)| text(data.1)).width(75),
+					table::column("", |data: &(usize, isize)| {
+						match state.get_item_by_id(data.0) {
+							Some(item) => {
+								button("Check")
+									.padding([3, 5])
+									.on_press(Message::AlchemyCheckItem(item.clone()))
+									
 							}
-							button("Fav")
-								.padding([3, 5])
-								.on_press(Message::AlchemyAddToFav(item.clone()))
-								.style(
-									if fav_check {
-										button::danger
-									}
-									else {
-										button::primary
-									})
+							None => {
+								button("Check")
+									.padding([3, 5])
+							}
 						}
-						None => {
-							button("Fav")
-								.padding([3, 5])
+					}),
+					table::column("", |data: &(usize, isize)| {
+						match state.get_item_by_id(data.0) {
+							Some(item) => {
+								let fav_check;
+								if let Some(_) = state.fav_items_alchemy.iter().find(|vec_item| vec_item.id == item.id) {
+									fav_check = true;
+								}
+								else {
+									fav_check = false;
+								}
+								button("Fav")
+									.padding([3, 5])
+									.on_press(Message::AlchemyAddToFav(item.clone()))
+									.style(
+										if fav_check {
+											button::danger
+										}
+										else {
+											button::primary
+										})
+							}
+							None => {
+								button("Fav")
+									.padding([3, 5])
+							}
 						}
-					}
-				})
+					})
 				];
 			if !state.best_items_alchemy.is_empty() {
 				let start_offset = (ALCHEMY_VEC_SIZE * state.table_vec_offset) as usize;
@@ -383,9 +395,6 @@ impl AppPages {
 
 	fn calc_body_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
 		let searchbar: Element<'a, Message>;
-		let resources_panel: Element<'a, Message>;
-		let products_panel: Element<'a, Message>;
-		
 		let combo = combo_box(
 				&state.combo_data,
 				"Select item",
@@ -394,137 +403,276 @@ impl AppPages {
 			)
 			.menu_height(Length::Fixed(COMBOBOX_MENU_HEIGHT))
 			.width(400);
-		let cost_text = {
-			if !state.calc_curr_products.is_empty() && !state.calc_curr_resources.is_empty() {
-				let mut prod_cost: i64 = 0;
-				let mut resr_cost: i64 = 0;
-				for data_tuple in state.calc_curr_products.iter() {
-					let latest_data = match state.latest_ge_data.get_data_by_id(data_tuple.0) {
-						Some(data) => data,
-						None => continue,
-					};
-					prod_cost += latest_data.buy_price().unwrap_or_default() as i64;
-				}
-				for data_tuple in state.calc_curr_resources.iter() {
-					let latest_data = match state.latest_ge_data.get_data_by_id(data_tuple.0) {
-						Some(data) => data,
-						None => continue,
-					};
-					resr_cost += latest_data.buy_price().unwrap_or_default() as i64;
-				}
-				Some(text(format!("Profit: {} gp", prod_cost - resr_cost)))
-			}
-			else {
-				None
-			}
-		};
 		
 		let reset_button = button("Reset")
 			.on_press(Message::CalcResetThis);
 		
-		searchbar = center( row![
-					combo,
-					cost_text,
-					space::horizontal(),
-					reset_button,
-				]
-				.spacing(APP_SPACING)
-			)
-			.height(Length::FillPortion(1))
-			.style(container::rounded_box)
-			.align_x(Horizontal::Left)
-			.padding([0, 5])
-			.into();
-		// RESOURCES -------------------------
-		let add_button_resources = {
-			if let Some(item) = &state.last_item {
-				Some(
-					button("ADD")
-						.on_press(Message::CalcAddResource(item.id))
-					)
-			}
-			else { None }
-		};
-		let resources_panel_top = row![
-				add_button_resources,
-			]
-			.padding(APP_PADDING)
-			.spacing(APP_SPACING);
-		let mut data_vec: Vec<Element<'_, Message>> = vec![];
-		for data in state.calc_curr_resources.iter(){
-			let item = match state.get_item_by_id(data.0) {
-					Some(item) => item,
-					None => continue,
+		if let CurrentRecipe::Loaded(holder) = &state.calc_curr_recipe {
+			let resources_panel: Element<'a, Message>;
+			let products_panel: Element<'a, Message>;
+			
+			let cost_text = {
+				if !holder.is_resources_empty() && !holder.is_products_empty() {
+					let mut prod_cost: i64 = 0;
+					let mut resr_cost: i64 = 0;
+					for data_tuple in holder.products_iter() {
+						let latest_data = match state.latest_ge_data.get_data_by_id(data_tuple.0) {
+							Some(data) => data,
+							None => continue,
+						};
+						prod_cost += (latest_data.buy_price().unwrap_or_default() * data_tuple.1) as i64;
+					}
+					for data_tuple in holder.resources_iter() {
+						let latest_data = match state.latest_ge_data.get_data_by_id(data_tuple.0) {
+							Some(data) => data,
+							None => continue,
+						};
+						resr_cost += (latest_data.buy_price().unwrap_or_default() * data_tuple.1) as i64;
+					}
+					Some(text(format!("Profit: {} gp", prod_cost - resr_cost)))
+				}
+				else {
+					None
+				}
 			};
-			let latest_data = match state.latest_ge_data.get_data_by_id(data.0) {
-				Some(data) => data,
-				None => continue,
-			};
-			data_vec.push(text(format!("{} {}, {} gp", data.1, item.name(), 
-					data.1 * latest_data.buy_price().unwrap_or_default())).into());
-		}
-		let resource_column = iced::widget::Column::from_vec(data_vec)
-			.spacing(APP_SPACING);
-		resources_panel = center(
-				column![
-						resources_panel_top,
-						center(resource_column),
+			
+			searchbar = center( row![
+						combo,
+						cost_text,
+						space::horizontal(),
+						reset_button,
 					]
-			)
-			.padding(APP_PADDING)
-			.style(container::rounded_box)
-			.into();
-		// PRODUCTS -------------------------
-		let add_button_products = {
-			if let Some(item) = &state.last_item {
-				Some(
-					button("ADD")
-						.on_press(Message::CalcAddProduct(item.id))
-					)
-			}
-			else { None }
-		};
-		let products_panel_top = row![
-				add_button_products,
-			]
-			.padding(APP_PADDING)
-			.spacing(APP_SPACING);
-		data_vec = vec![];
-		for data in state.calc_curr_products.iter(){
-			let item = match state.get_item_by_id(data.0) {
-					Some(item) => item,
-					None => continue,
+					.spacing(APP_SPACING)
+				)
+				.height(Length::FillPortion(1))
+				.style(container::rounded_box)
+				.align_x(Horizontal::Left)
+				.padding([0, 5])
+				.into();
+
+			
+			// RESOURCES -------------------------
+			let add_button_resources = {
+				if let Some(item) = &state.last_item {
+					Some(
+						button("ADD")
+							.on_press(Message::CalcAddResource(item.id))
+						)
+				}
+				else { None }
 			};
-			let latest_data = match state.latest_ge_data.get_data_by_id(data.0) {
-				Some(data) => data,
-				None => continue,
+			let remove_button_resources = {
+				if let Some(item) = &state.last_item {
+					Some(
+						button("REMOVE")
+							.on_press(Message::CalcRemoveResource(item.id))
+						)
+				}
+				else { None }
 			};
-			data_vec.push(text(format!("{} {}, {} gp", data.1, item.name(), 
-					data.1 * latest_data.buy_price().unwrap_or_default())).into());
-		}
-		let product_column = iced::widget::Column::from_vec(data_vec)
-			.spacing(APP_SPACING);
-		
-		products_panel = center(
-				column![
-						products_panel_top,
-						center(product_column),
-					]
-			)
-			.padding(APP_PADDING)
-			.style(container::rounded_box)
-			.into();
-		
-		let main = center(
-			column![
-					searchbar,
-					row![resources_panel, products_panel]
-						.spacing(APP_SPACING)
-						.height(Length::FillPortion(10)),
+			let resources_panel_top = row![
+					add_button_resources,
+					remove_button_resources,
 				]
-				.align_x(Center)
-				.spacing(APP_SPACING)
-			);
-		main.into()
+				.padding(APP_PADDING)
+				.spacing(APP_SPACING);
+			let mut data_vec: Vec<Element<'_, Message>> = vec![];
+			for data in holder.resources_iter(){
+				let item = match state.get_item_by_id(data.0) {
+						Some(item) => item,
+						None => continue,
+				};
+				let latest_data = match state.latest_ge_data.get_data_by_id(data.0) {
+					Some(data) => data,
+					None => continue,
+				};
+				data_vec.push(text(format!("{} {}, {} gp", data.1, item.name(), 
+						data.1 * latest_data.buy_price().unwrap_or_default())).into());
+			}
+			let resource_column = iced::widget::Column::from_vec(data_vec)
+				.spacing(APP_SPACING);
+			resources_panel = center(
+					column![
+							resources_panel_top,
+							center(resource_column),
+						]
+				)
+				.padding(APP_PADDING)
+				.style(container::rounded_box)
+				.into();
+			// PRODUCTS -------------------------
+			let add_button_products = {
+				if let Some(item) = &state.last_item {
+					Some(
+						button("ADD")
+							.on_press(Message::CalcAddProduct(item.id))
+						)
+				}
+				else { None }
+			};
+			let remove_button_products = {
+				if let Some(item) = &state.last_item {
+					Some(
+						button("REMOVE")
+							.on_press(Message::CalcRemoveProduct(item.id))
+						)
+				}
+				else { None }
+			};
+			let products_panel_top = row![
+					add_button_products,
+					remove_button_products,
+				]
+				.padding(APP_PADDING)
+				.spacing(APP_SPACING);
+			data_vec = vec![];
+			for data in holder.products_iter(){
+				let item = match state.get_item_by_id(data.0) {
+						Some(item) => item,
+						None => continue,
+				};
+				let latest_data = match state.latest_ge_data.get_data_by_id(data.0) {
+					Some(data) => data,
+					None => continue,
+				};
+				data_vec.push(text(format!("{} {}, {} gp", data.1, item.name(), 
+						data.1 * latest_data.buy_price().unwrap_or_default())).into());
+			}
+			let product_column = iced::widget::Column::from_vec(data_vec)
+				.spacing(APP_SPACING);
+			
+			products_panel = center(
+					column![
+							products_panel_top,
+							center(product_column),
+						]
+				)
+				.padding(APP_PADDING)
+				.style(container::rounded_box)
+				.into();
+			
+			let main = center(
+				column![
+						searchbar,
+						row![resources_panel, products_panel]
+							.spacing(APP_SPACING)
+							.height(Length::FillPortion(10)),
+					]
+					.align_x(Center)
+					.spacing(APP_SPACING)
+				);
+			main.into()
+		}
+		else {
+			searchbar = center( row![
+						combo,
+						space::horizontal(),
+						reset_button,
+					]
+					.spacing(APP_SPACING)
+				)
+				.height(Length::FillPortion(1))
+				.style(container::rounded_box)
+				.align_x(Horizontal::Left)
+				.padding([0, 5])
+				.into();
+			
+			let main = center(
+				column![
+						searchbar,
+						center(text("Create new or load saved recipe"))
+							.style(container::rounded_box)
+							.height(Length::FillPortion(10)),
+					]
+					.align_x(Center)
+					.spacing(APP_SPACING)
+				);
+			main.into()
+		}
+	}
+}
+
+impl CurrentRecipe {
+	pub fn new() -> Self {
+		Self::Loaded(RecipeHolder::default())
+	}
+}
+
+impl Default for CurrentRecipe {
+	fn default() -> Self {
+		CurrentRecipe::Empty
+	}
+}
+
+impl RecipeHolder {
+	pub fn is_products_empty(&self) -> bool {
+		self.calc_curr_products.is_empty()
+	}
+	
+	pub fn is_resources_empty(&self) -> bool {
+		self.calc_curr_resources.is_empty()
+	}
+	
+	pub fn resources_iter(&self) -> std::slice::Iter<'_, RecipeElement> {
+		self.calc_curr_resources.iter()
+	}
+	
+	pub fn products_iter(&self) -> std::slice::Iter<'_, RecipeElement> {
+		self.calc_curr_products.iter()
+	}
+	
+	pub fn add_one_to_resources(&mut self, id: usize) {
+		if let Some(pos) = self.calc_curr_resources.iter().position(|data_tuple| id == data_tuple.0) {
+			self.calc_curr_resources[pos].1 += 1;
+		}
+		else {
+			self.calc_curr_resources.push(RecipeElement(id, 1));
+		}
+	}	
+	
+	pub fn add_one_to_products(&mut self, id: usize) {
+		if let Some(pos) = self.calc_curr_products.iter().position(|data_tuple| id == data_tuple.0) {
+			self.calc_curr_products[pos].1 += 1;
+		}
+		else {
+			self.calc_curr_products.push(RecipeElement(id, 1));
+		}
+	}
+	
+	pub fn remove_one_from_products(&mut self, pos: usize) {
+		if self.calc_curr_products[pos].1 > 1 {
+			self.calc_curr_products[pos].1 -= 1;
+		}
+		else {
+			self.calc_curr_products.remove(pos);
+		}
+	}
+	
+	pub fn remove_one_from_resources(&mut self, pos: usize) {
+		if self.calc_curr_resources[pos].1 > 1 {
+			self.calc_curr_resources[pos].1 -= 1;
+		}
+		else {
+			self.calc_curr_resources.remove(pos);
+		}
+	}
+}
+
+impl Default for RecipeHolder {
+	fn default() -> Self {
+		RecipeHolder {
+			calc_curr_resources: vec![],
+			calc_curr_products: vec![],
+		}
+	}
+}
+
+impl RecipeElement {
+	pub fn id(&self) -> usize {
+		self.0
+	}
+	
+	pub fn num(&self) -> usize {
+		self.1
 	}
 }

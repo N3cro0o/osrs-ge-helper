@@ -1,3 +1,5 @@
+#[cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use iced::{Element, Center, Size, Pixels, Theme, Subscription};
 use iced::widget::{button, column, row, text, space, container, combo_box};
 use iced::time::{self, Instant, seconds};
@@ -10,7 +12,7 @@ use reqwest::blocking::{Client, Response};
 mod osrs;
 mod structs;
 
-use structs::{SearchFilter, AppPages};
+use structs::{SearchFilter, AppPages, CurrentRecipe};
 
 pub const APP_VERSION: &str = "0.2.";
 pub const BOND_ID: usize = 13190;
@@ -43,8 +45,7 @@ pub struct MainLayout {
 	pub best_items_alchemy: Vec<(usize, isize)>,
 	pub table_vec_offset: usize,
 	
-	pub calc_curr_resources: Vec<(usize, usize)>, // 0 - ID, 1 - how many
-	pub calc_curr_products: Vec<(usize, usize)>, // 0 - ID, 1 - how many
+	pub calc_curr_recipe: CurrentRecipe,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -66,7 +67,9 @@ pub enum Message {
 	AlchemyCheckItem(osrs::DataHolder),
 	AlchemyAddToFav(osrs::DataHolder),
 	CalcAddResource(usize),
+	CalcRemoveResource(usize),
 	CalcAddProduct(usize),
+	CalcRemoveProduct(usize),
 	CalcResetThis,
 }
 
@@ -96,8 +99,7 @@ impl MainLayout {
 			best_items_alchemy: vec![],
 			table_vec_offset: 0,
 			
-			calc_curr_resources: vec![],
-			calc_curr_products: vec![],
+			calc_curr_recipe: CurrentRecipe::default(),
 		};
 		layout.update(Message::RefreshData);
 		layout
@@ -293,28 +295,41 @@ impl MainLayout {
 			
 			Message::CalcAddResource(item_id) => {
 				if let Some(item) = self.get_item_by_id(item_id) {
-					if let Some(pos) = self.calc_curr_resources.iter().position(|data_tuple| item_id == data_tuple.0) {
-						self.calc_curr_resources[pos].1 += 1;
-					}
-					else {
-						self.calc_curr_resources.push((item_id, 1));
+					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
+						holder.add_one_to_resources(item_id);
 					}
 				}
 			}
 			Message::CalcAddProduct(item_id) => {
 				if let Some(item) = self.get_item_by_id(item_id) {
-					if let Some(pos) = self.calc_curr_products.iter().position(|data_tuple| item_id == data_tuple.0) {
-						self.calc_curr_products[pos].1 += 1;
+					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
+						holder.add_one_to_products(item_id);
 					}
-					else {
-						self.calc_curr_products.push((item_id, 1));
+				}
+			}
+						
+			Message::CalcRemoveResource(item_id) => {
+				if let Some(item) = self.get_item_by_id(item_id) {
+					if let CurrentRecipe::Loaded( holder) = &mut self.calc_curr_recipe {
+						if let Some(pos) = holder.resources_iter().position(|data_tuple| item_id == data_tuple.id()) { // check if exists
+							holder.remove_one_from_resources(pos);
+						}
+					}
+				}
+			}
+			
+			Message::CalcRemoveProduct(item_id) => {
+				if let Some(item) = self.get_item_by_id(item_id) {
+					if let CurrentRecipe::Loaded( holder) = &mut self.calc_curr_recipe {
+						if let Some(pos) = holder.products_iter().position(|data_tuple| item_id == data_tuple.id()) { // check if exists
+							holder.remove_one_from_products(pos);
+						}
 					}
 				}
 			}
 			
 			Message::CalcResetThis => {
-				self.calc_curr_products.clear();
-				self.calc_curr_resources.clear();
+				self.calc_curr_recipe = CurrentRecipe::new();
 			}
 			
 			_ => {
