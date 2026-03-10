@@ -14,7 +14,7 @@ mod structs;
 
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot};
 
-pub const APP_VERSION: &str = "0.2.";
+pub const APP_VERSION: &str = "0.3.";
 pub const BOND_ID: usize = 13190;
 pub const USER_AGENT_MESSAGE: &str = "N3cro0oDev (discord: necro0o) - GE Price Calc Prototype";
 pub const APP_SPACING: Pixels = Pixels(5.0);
@@ -41,6 +41,8 @@ pub struct MainLayout {
 	
 	pub saved_items_item_view: Vec<osrs::DataHolder>,
 	pub combo_current_filter_item_view: Option<SearchFilter>,
+	pub selected_item_timeseries_data: Option<osrs::TimeseriesData>,
+	pub selected_timeseries: osrs::Timeseries,
 	
 	pub fav_items_alchemy: Vec<osrs::DataHolder>,
 	pub search_filter_alchemy: Option<SearchFilter>,
@@ -97,6 +99,8 @@ impl MainLayout {
 			
 			saved_items_item_view: vec![],
 			combo_current_filter_item_view: None,
+			selected_item_timeseries_data: None,
+			selected_timeseries: osrs::Timeseries::FiveMin,
 			
 			fav_items_alchemy: vec![],
 			search_filter_alchemy: None,
@@ -260,6 +264,7 @@ impl MainLayout {
 			
 			Message::SelectItem(item) => {
 				self.select_new_item(&item);
+				self.get_timeseries_data(&item);
 			}
 			
 			Message::ChangePage(page) => {
@@ -365,6 +370,27 @@ impl MainLayout {
 			Some(data) => Some(&data),
 			None => None,
 		}
+	}
+	
+	fn get_timeseries_data(&mut self, item: &osrs::DataHolder) -> Result<(), String> {
+		let url = format!("https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep={}&id={}", self.selected_timeseries, item.id);
+		dbg!(&url);
+		let response = match self.fetch_get_data(&url) {
+			Ok(resp) => resp,
+			Err(err) => {
+				return Err(err.to_string());
+			}
+		};
+		if !response.status().is_success(){
+			return Err(format!("Response failed. {}", response.status()));
+		}
+		let body = response.text().unwrap();
+		let mut data = match serde_json::from_str::<osrs::TimeseriesData>(&body){
+			Ok(data) => data,
+			Err(err) => return Err(format!("{}\n{}", err.to_string(), body)),
+		};
+		self.selected_item_timeseries_data = Some(data);
+		Ok(())
 	}
 	
 	fn calculate_best_alchemy(&mut self) {

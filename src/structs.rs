@@ -223,7 +223,7 @@ impl AppPages {
 				&state.combo_data,
 				"Select item",
 				state.last_item.as_ref(),
-				Message::AddItem,
+				Message::SelectItem,
 			)
 			.menu_height(Length::Fixed(COMBOBOX_MENU_HEIGHT))
 			.width(400);

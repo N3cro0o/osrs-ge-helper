@@ -37,6 +37,45 @@ pub struct LatestData {
 	data: HashMap<String, GEData>,
 }
 
+pub enum Timeseries {
+	FiveMin,
+	OneHour,
+	SixHour,
+	TwentyFourHours,
+}
+
+impl std::fmt::Display for Timeseries {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let string = match self {
+			Timeseries::FiveMin => String::from("5m"),
+			Timeseries::OneHour => String::from("1h"),
+			Timeseries::SixHour => String::from("6h"),
+			Timeseries::TwentyFourHours => String::from("24h"),
+		};
+		write!(f, "{}", string)
+	}
+}
+
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+pub struct TimeseriesData {
+	data: Vec<TimeseriesItemData>,
+	#[serde(rename = "itemId")]
+	item_id: usize,
+}
+
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
+pub struct TimeseriesItemData {
+	timestamp: usize,
+	#[serde(rename = "avgHighPrice")]
+	high_price_average: Option<usize>,
+	#[serde(rename = "avgLowPrice")]
+	low_price_average: Option<usize>,
+	#[serde(rename = "highPriceVolume")]
+	high_price_volume: Option<usize>,
+	#[serde(rename = "lowPriceVolume")]
+	low_price_volume: Option<usize>,
+}
+
 impl DataHolder {
 	pub fn name(&self) -> String {
 		self.name.clone()
