@@ -1,6 +1,7 @@
 use std::fmt;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use std::slice::Iter;
 use super::structs;
 
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
@@ -65,7 +66,7 @@ pub struct TimeseriesData {
 
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct TimeseriesItemData {
-	timestamp: usize,
+	pub timestamp: usize,
 	#[serde(rename = "avgHighPrice")]
 	high_price_average: Option<usize>,
 	#[serde(rename = "avgLowPrice")]
@@ -161,5 +162,32 @@ impl VolumeData {
 impl LatestData {
 	pub fn get_data_by_id(&self, id: usize) -> Option<GEData> {
 		self.data.get(&id.to_string()).copied()
+	}
+}
+
+impl TimeseriesData {
+	pub fn get_data_iter(&self) -> Iter<'_, TimeseriesItemData> {
+		self.data.iter()
+	}
+	
+	pub fn get_time_tuple(&self) -> (usize, usize) {
+		let first = self.data[0].timestamp;
+		let last = self.data[364].timestamp;
+		(first, last)
+	}
+}
+
+impl TimeseriesItemData {
+	pub fn high_price_average(&self) -> Option<usize> {
+		self.high_price_average.clone()
+	}
+	pub fn low_price_average(&self) -> Option<usize> {
+		self.low_price_average.clone()
+	}
+	pub fn high_price_volume(&self) -> Option<usize> {
+		self.high_price_volume.clone()
+	}
+	pub fn low_price_volume(&self) -> Option<usize> {
+		self.low_price_volume.clone()
 	}
 }

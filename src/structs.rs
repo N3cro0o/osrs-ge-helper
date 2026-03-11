@@ -11,6 +11,7 @@ use num_format::{Locale, ToFormattedString};
 
 use crate::{Message, MainLayout};
 use crate::{APP_PADDING, APP_SPACING, COMBOBOX_MENU_HEIGHT, ALCHEMY_VEC_SIZE};
+use crate::osrs;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchFilter {
@@ -39,16 +40,25 @@ pub enum CurrentRecipe {
 
 #[derive(Default)]
 pub struct ItemViewPlot {
-	item_id: usize,
+	item_name: String,
+	data_series: Option<osrs::TimeseriesData>,
 }
 
 impl ItemViewPlot {
 	pub fn view(&self) -> Element<'_, Message> {
 		let chart = ChartWidget::new(self)
-			.width(Length::Fixed(300.0))
-			.height(Length::Fixed(300.0));
+			.width(Length::FillPortion(2))
+			.height(Length::Fill);
 		
 		chart.into()
+	}
+	
+	pub fn change_label(&mut self, item_name: String) {
+		self.item_name = item_name;
+	}
+	
+	pub fn update_data(&mut self, data: osrs::TimeseriesData) {
+		self.data_series = Some(data);
 	}
 }
 
@@ -58,13 +68,67 @@ impl Chart<Message> for ItemViewPlot {
     fn build_chart<DB: DrawingBackend>(&self, _state: &Self::State, _builder: ChartBuilder<DB>) {}
 
     fn draw_chart<DB: DrawingBackend>(&self, _state: &Self::State, root: DrawingArea<DB, Shift>) {
+		let y_margin: (usize, usize) = {
+			if let Some(data) = &self.data_series {
+				let mut min: usize = usize::MAX;
+				let mut max: usize = 0;
+
+				for item in data.get_data_iter() {
+					if let Some(high) = item.high_price_average() {
+						if min > high {
+							min = high;
+						}
+						else if max < high {
+							max = high;
+						}
+					}
+				}
+				
+				(min, max)
+			}
+			else {
+				(0, 2)
+			}
+		};
+		let x_margin: (usize, usize) = {
+			if let Some(data) = &self.data_series {
+				data.get_time_tuple()
+			}
+			else {
+				(0, 3)
+			}
+		};
+		
+		let data: Vec<(usize, usize)> = {
+			if let Some(data) = &self.data_series {
+				let mut vec: Vec<(usize, usize)> = vec![];
+				for item in data.get_data_iter() {
+					if let Some(high) = &item.high_price_average() {
+						vec.push((item.timestamp, *high));
+					}
+					else {
+						let x = match vec.last() {
+							Some((_x, y)) => (item.timestamp, *y),
+							None => (item.timestamp, 0)
+						};
+						vec.push(x);
+					}
+				}
+				vec
+			}
+			
+			else {
+				vec![(0, 1), (1, 1), (2, 1), (3, 1)]
+			}
+		};
+		
         let mut builder = ChartBuilder::on(&root);
 		let mut chart = builder
 			.margin(30)
-			.caption(format!("y=x^{}", 1), ("sans-serif", 22))
+			.caption(self.item_name.clone(), ("sans-serif", 22))
 			.x_label_area_size(30)
 			.y_label_area_size(30)
-			.build_cartesian_2d(-1f32..1f32, -1.2f32..1.2f32)
+			.build_cartesian_2d((x_margin.0)..(x_margin.1), (y_margin.0)..(y_margin.1))
 			.unwrap();
 
 		chart
@@ -76,9 +140,7 @@ impl Chart<Message> for ItemViewPlot {
 
 		chart
 			.draw_series(LineSeries::new(
-				(-50..=50)
-					.map(|x| x as f32 / 50.0)
-					.map(|x| (x, x.powf(1 as f32))),
+				data,
 				&RED,
 			))
 			.unwrap();
@@ -288,16 +350,17 @@ impl AppPages {
 			
 		let body = center(
 				row![
-						column![
-								text(format!("Value: {}", value.to_formatted_string(&Locale::en))),
-								text(format!("Low Alch: {}", loalch.to_formatted_string(&Locale::en))),
-								text(format!("High Alch: {}", highalch.to_formatted_string(&Locale::en))),
-								space::vertical().height(Length::Fixed(100.0)),
-								text(format!("Instant buy: {}", insta_buy.to_formatted_string(&Locale::en))),
-								text(format!("Instant sell: {}", insta_sell.to_formatted_string(&Locale::en))),
-								text(format!("Daily volume: {}", volume.to_formatted_string(&Locale::en))),
-							],
-						space::horizontal().width(Length::Fixed(200.0)),
+						center(
+							column![
+									text(format!("Value: {}", value.to_formatted_string(&Locale::en))),
+									text(format!("Low Alch: {}", loalch.to_formatted_string(&Locale::en))),
+									text(format!("High Alch: {}", highalch.to_formatted_string(&Locale::en))),
+									space::vertical().height(Length::Fixed(100.0)),
+									text(format!("Instant buy: {}", insta_buy.to_formatted_string(&Locale::en))),
+									text(format!("Instant sell: {}", insta_sell.to_formatted_string(&Locale::en))),
+									text(format!("Daily volume: {}", volume.to_formatted_string(&Locale::en))),
+								]
+							),
 						state.item_view_plot().view(),
 					]
 					.spacing(APP_SPACING)

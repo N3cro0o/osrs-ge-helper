@@ -264,7 +264,7 @@ impl MainLayout {
 			
 			Message::SelectItem(item) => {
 				self.select_new_item(&item);
-				self.get_timeseries_data(&item);
+				let _ = self.get_timeseries_data(&item);
 			}
 			
 			Message::ChangePage(page) => {
@@ -374,7 +374,6 @@ impl MainLayout {
 	
 	fn get_timeseries_data(&mut self, item: &osrs::DataHolder) -> Result<(), String> {
 		let url = format!("https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep={}&id={}", self.selected_timeseries, item.id);
-		dbg!(&url);
 		let response = match self.fetch_get_data(&url) {
 			Ok(resp) => resp,
 			Err(err) => {
@@ -385,11 +384,13 @@ impl MainLayout {
 			return Err(format!("Response failed. {}", response.status()));
 		}
 		let body = response.text().unwrap();
-		let mut data = match serde_json::from_str::<osrs::TimeseriesData>(&body){
+		let data = match serde_json::from_str::<osrs::TimeseriesData>(&body){
 			Ok(data) => data,
 			Err(err) => return Err(format!("{}\n{}", err.to_string(), body)),
 		};
-		self.selected_item_timeseries_data = Some(data);
+		self.plotter.change_label(item.name());
+		self.plotter.update_data(data);
+		// self.selected_item_timeseries_data = Some(data);
 		Ok(())
 	}
 	
@@ -508,8 +509,18 @@ impl MainLayout {
 		if let Ok(_) = result {
 			self.refresh_volume_data()?;
 			self.refresh_latest_data()?;
+			self.refresh_plotter_data()?;
 		}
 		result
+	}
+	
+	fn refresh_plotter_data(&mut self) -> Result<(), String> {
+		if let Some(item) = self.last_item.clone() {
+			self.get_timeseries_data(&item)
+		}
+		else {
+			Ok(())
+		}
 	}
 	
 	fn refresh_item_data(&mut self) -> Result<usize, String> {
