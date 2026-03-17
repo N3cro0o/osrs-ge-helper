@@ -189,7 +189,7 @@ impl MainLayout {
 		let body = container(
 				row![
 						side,
-						main,
+						main /*.explain(iced::Color::from_rgb(0.0, 1.0, 0.0))*/,
 					]
 					.spacing(APP_SPACING)
 			);
@@ -359,6 +359,7 @@ impl MainLayout {
 			_ => {
 				self.last_item = None;
 				self.last_item_ge = None;
+				self.plotter.reset_data();
 			}
 		}
 		self.current_page = page;

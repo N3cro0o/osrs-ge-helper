@@ -1,3 +1,5 @@
+use chrono::{DateTime, TimeZone, Local};
+
 use iced::{Element, Center, Length};
 use iced::widget::{button, column, row, text, center, space, container, combo_box, table, scrollable};
 use iced::alignment::Horizontal;
@@ -12,6 +14,8 @@ use num_format::{Locale, ToFormattedString};
 use crate::{Message, MainLayout};
 use crate::{APP_PADDING, APP_SPACING, COMBOBOX_MENU_HEIGHT, ALCHEMY_VEC_SIZE};
 use crate::osrs;
+
+pub const SKIP_VARIABLE: u16 = 0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchFilter {
@@ -47,7 +51,7 @@ pub struct ItemViewPlot {
 impl ItemViewPlot {
 	pub fn view(&self) -> Element<'_, Message> {
 		let chart = ChartWidget::new(self)
-			.width(Length::FillPortion(2))
+			.width(Length::Fill)
 			.height(Length::Fill);
 		
 		chart.into()
@@ -59,6 +63,11 @@ impl ItemViewPlot {
 	
 	pub fn update_data(&mut self, data: osrs::TimeseriesData) {
 		self.data_series = Some(data);
+	}
+	
+	pub fn reset_data(&mut self) {
+		self.data_series = None;
+		self.item_name = String::new();
 	}
 }
 
@@ -84,7 +93,7 @@ impl Chart<Message> for ItemViewPlot {
 					}
 				}
 				
-				(min, max)
+				((min as f32 * 0.995) as usize, (max as f32 * 1.005) as usize)
 			}
 			else {
 				(0, 2)
@@ -98,11 +107,16 @@ impl Chart<Message> for ItemViewPlot {
 				(0, 3)
 			}
 		};
-		
 		let data: Vec<(usize, usize)> = {
 			if let Some(data) = &self.data_series {
 				let mut vec: Vec<(usize, usize)> = vec![];
+				let mut skip_index = SKIP_VARIABLE;
 				for item in data.get_data_iter() {
+					if skip_index < SKIP_VARIABLE {
+						skip_index += 1;
+						continue;
+					}
+					else { skip_index = 0; }
 					if let Some(high) = &item.high_price_average() {
 						vec.push((item.timestamp, *high));
 					}
@@ -125,7 +139,6 @@ impl Chart<Message> for ItemViewPlot {
         let mut builder = ChartBuilder::on(&root);
 		let mut chart = builder
 			.margin(30)
-			.caption(self.item_name.clone(), ("sans-serif", 22))
 			.x_label_area_size(30)
 			.y_label_area_size(30)
 			.build_cartesian_2d((x_margin.0)..(x_margin.1), (y_margin.0)..(y_margin.1))
@@ -133,8 +146,9 @@ impl Chart<Message> for ItemViewPlot {
 
 		chart
 			.configure_mesh()
-			.x_labels(3)
-			.y_labels(3)
+			.x_labels(7)
+			.x_label_formatter(&|x| Local.timestamp_opt(*x as i64, 0).unwrap().to_string())
+			.y_labels(5)
 			.draw()
 			.unwrap();
 
@@ -347,21 +361,41 @@ impl AppPages {
 			.align_x(Horizontal::Left)
 			.height(Length::FillPortion(1))
 			.style(container::rounded_box);
-			
-		let body = center(
+		
+		let body_data_row = row![
+				column![
+						text(format!("Value: {}", value.to_formatted_string(&Locale::en))),
+						text(format!("Low Alch: {}", loalch.to_formatted_string(&Locale::en))),
+						text(format!("High Alch: {}", highalch.to_formatted_string(&Locale::en))),
+					],
+					space::horizontal().width(Length::Fixed(200.0)),
+				column![
+						text(format!("Instant buy: {}", insta_buy.to_formatted_string(&Locale::en))),
+						text(format!("Instant sell: {}", insta_sell.to_formatted_string(&Locale::en))),
+						text(format!("Daily volume: {}", volume.to_formatted_string(&Locale::en))),
+					],
+			]
+			.spacing(APP_SPACING);
+		
+		let body_center = column![
 				row![
-						center(
-							column![
-									text(format!("Value: {}", value.to_formatted_string(&Locale::en))),
-									text(format!("Low Alch: {}", loalch.to_formatted_string(&Locale::en))),
-									text(format!("High Alch: {}", highalch.to_formatted_string(&Locale::en))),
-									space::vertical().height(Length::Fixed(100.0)),
-									text(format!("Instant buy: {}", insta_buy.to_formatted_string(&Locale::en))),
-									text(format!("Instant sell: {}", insta_sell.to_formatted_string(&Locale::en))),
-									text(format!("Daily volume: {}", volume.to_formatted_string(&Locale::en))),
-								]
-							),
-						state.item_view_plot().view(),
+						space::horizontal(),
+						button("1 day"),
+						button("7 days"),
+						button("30 days"),
+						button("1 year"),
+						space::horizontal(),
+					]
+					.spacing(APP_SPACING),
+				state.item_view_plot().view(),
+			];
+		
+		let body = center(
+				column![
+						center(body_data_row)
+							.height(Length::FillPortion(1)),
+						center(body_center)
+							.height(Length::FillPortion(5)),
 					]
 					.spacing(APP_SPACING)
 			)
