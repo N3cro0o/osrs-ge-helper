@@ -28,6 +28,7 @@ pub enum AppPages {
 	ItemView,
 	Alchemy,
 	Calculator,
+	Config,
 }
 
 pub struct RecipeElement (usize, usize);
@@ -186,6 +187,7 @@ impl AppPages {
 			AppPages::ItemView => format!("Current Page -> Item view"),
 			AppPages::Alchemy => format!("Current Page -> Alchemy view"),
 			AppPages::Calculator => format!("Current Page -> Recipe calculator"),
+			_ => format!("Current Page -> Nothing????????????"),
 		}
 	}
 	
@@ -194,6 +196,7 @@ impl AppPages {
 			AppPages::ItemView => self.item_sidebar_view(state),
 			AppPages::Alchemy => self.alch_sidebar_view(state),
 			AppPages::Calculator => self.calc_sidebar_view(state),
+			_ => self.other_sidebar_view(),
 		}
 	}
 	
@@ -202,6 +205,7 @@ impl AppPages {
 			AppPages::ItemView => self.item_body_view(state),
 			AppPages::Alchemy => self.alch_body_view(state),
 			AppPages::Calculator => self.calc_body_view(state),
+			_ => self.other_body_view(),
 		}
 	}
 	
@@ -272,6 +276,10 @@ impl AppPages {
 			.max_width(200)
 			.style(container::rounded_box);
 		sidebar.into()
+	}
+	
+	fn other_sidebar_view<'a>(&'a self) -> Element<'a, Message> {
+		center(text("Nothing")).into()
 	}
 	
 	fn item_body_view<'a>(&self, state: &'a MainLayout) -> Element<'a, Message> {
@@ -377,13 +385,27 @@ impl AppPages {
 			]
 			.spacing(APP_SPACING);
 		
+		let mut bttn_label_vec = vec!["1 day", "7 days", "30 days", "1 year"];
+		let mut bttn_vec: Vec<Element<'_, Message>> = vec![];
+		{
+			let mut index = 0;
+			for series in osrs::Timeseries::ALL() {
+				let mut bttn = button(bttn_label_vec[index]);
+				if series == state.selected_timeseries {
+					bttn = bttn.style(button::danger).on_press_maybe(None);
+				}
+				else {
+					bttn = bttn.on_press(Message::ChangePlotterTimeseries(series));
+				}
+				bttn_vec.push(bttn.into());
+				index += 1;
+			}
+		}
+		
 		let body_center = column![
 				row![
 						space::horizontal(),
-						button("1 day"),
-						button("7 days"),
-						button("30 days"),
-						button("1 year"),
+						iced::widget::Row::from_vec(bttn_vec).spacing(APP_SPACING),
 						space::horizontal(),
 					]
 					.spacing(APP_SPACING),
@@ -742,6 +764,10 @@ impl AppPages {
 				);
 			main.into()
 		}
+	}
+	
+	fn other_body_view<'a>(&'a self) -> Element<'a, Message> {
+		center(text("Nothing")).into()
 	}
 }
 

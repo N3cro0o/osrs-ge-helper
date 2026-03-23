@@ -75,6 +75,7 @@ pub enum Message {
 	CalcAddProduct(usize),
 	CalcRemoveProduct(usize),
 	CalcResetThis,
+	ChangePlotterTimeseries(osrs::Timeseries),
 }
 
 impl MainLayout {
@@ -206,7 +207,8 @@ impl MainLayout {
 				row![
 						text(format!("v {APP_VERSION}")),
 						space::horizontal(),
-						button("config"),
+						button("config")
+							.on_press(Message::ChangePage(AppPages::Config)),
 					]
 			)
 			.width(200)
@@ -338,6 +340,13 @@ impl MainLayout {
 							holder.remove_one_from_products(pos);
 						}
 					}
+				}
+			}
+			
+			Message::ChangePlotterTimeseries(timeseries) => {
+				self.selected_timeseries = timeseries;
+				if let Some(item) = &self.last_item {
+					let _ = self.get_timeseries_data(&item.clone());
 				}
 			}
 			

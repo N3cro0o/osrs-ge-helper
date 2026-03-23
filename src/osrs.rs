@@ -38,11 +38,18 @@ pub struct LatestData {
 	data: HashMap<String, GEData>,
 }
 
+#[derive(PartialEq, Clone, Debug)]
 pub enum Timeseries {
 	FiveMin,
 	OneHour,
 	SixHour,
 	TwentyFourHours,
+}
+
+impl Timeseries {
+	pub const fn ALL() -> [Self; 4] {
+		[Self::FiveMin, Self::OneHour, Self::SixHour, Self::TwentyFourHours]
+	}
 }
 
 impl std::fmt::Display for Timeseries {
