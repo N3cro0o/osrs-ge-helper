@@ -39,6 +39,7 @@ pub struct MainLayout {
 	pub title: String,
 	pub theme: Option<Theme>,
 	pub current_page: AppPages,
+	pub popup_ready: bool,
 	
 	pub saved_items_item_view: Vec<osrs::DataHolder>,
 	pub combo_current_filter_item_view: Option<SearchFilter>,
@@ -51,6 +52,8 @@ pub struct MainLayout {
 	pub table_vec_offset: usize,
 	
 	pub calc_curr_recipe: CurrentRecipe,
+	
+	pub extra_string: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -77,7 +80,11 @@ pub enum Message {
 	CalcAddProduct(usize),
 	CalcRemoveProduct(usize),
 	CalcResetThis,
+	CalcAcceptRecipeName,
 	ChangePlotterTimeseries(osrs::Timeseries),
+	ChangeExtraString(String),
+	ShowPopup,
+	HidePopup,
 }
 
 impl MainLayout {
@@ -99,6 +106,7 @@ impl MainLayout {
 			title: "OSRS GE Calculator".to_string(),
 			theme,
 			current_page: AppPages::ItemView,
+			popup_ready: false,
 			
 			saved_items_item_view: vec![],
 			combo_current_filter_item_view: None,
@@ -111,6 +119,7 @@ impl MainLayout {
 			table_vec_offset: 0,
 			
 			calc_curr_recipe: CurrentRecipe::default(),
+			extra_string: String::new(),
 		};
 		layout.update(Message::RefreshData);
 		layout
@@ -223,7 +232,7 @@ impl MainLayout {
 	}
 
 	fn main_body(&self) -> Element<'_, Message> {
-		if !self._debug_value {
+		if !self.popup_ready {
 			self.current_page.body(self)
 		}
 		else {
@@ -322,6 +331,7 @@ impl MainLayout {
 					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
 						holder.add_one_to_resources(item_id);
 					}
+					self.update(Message::HidePopup);
 				}
 			}
 			Message::CalcAddProduct(item_id) => {
@@ -329,6 +339,7 @@ impl MainLayout {
 					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
 						holder.add_one_to_products(item_id);
 					}
+					self.update(Message::HidePopup);
 				}
 			}
 						
@@ -339,6 +350,7 @@ impl MainLayout {
 							holder.remove_one_from_resources(pos);
 						}
 					}
+					self.update(Message::HidePopup);
 				}
 			}
 			
@@ -349,6 +361,19 @@ impl MainLayout {
 							holder.remove_one_from_products(pos);
 						}
 					}
+					self.update(Message::HidePopup);
+				}
+			}
+			
+			Message::ShowPopup => {
+				if !self.popup_ready {
+					self.popup_ready = true;
+				}
+			}
+			
+			Message::HidePopup => {
+				if self.popup_ready {
+					self.popup_ready = false;
 				}
 			}
 			
@@ -361,10 +386,19 @@ impl MainLayout {
 			
 			Message::CalcResetThis => {
 				self.calc_curr_recipe = CurrentRecipe::new();
+				self.update(Message::HidePopup);
 			}
 			
 			Message::CurrentTesat => {
 				self._debug_value = !self._debug_value;
+			}
+			
+			Message::CalcAcceptRecipeName => {
+				println!("Add save logic");
+			}
+			
+			Message::ChangeExtraString(string) => {
+				self.extra_string = string;
 			}
 			
 			_ => {
@@ -385,6 +419,9 @@ impl MainLayout {
 			}
 		}
 		self.current_page = page;
+		self.popup_ready = false;
+		if !self.extra_string.is_empty() { println!("Extra string value: {}", self.extra_string); }
+		self.extra_string.clear();
 		println!("{}", self.current_page.return_current_page_info());
 	}
 	

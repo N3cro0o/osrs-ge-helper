@@ -1,7 +1,9 @@
+// TODO: Refactor AppPages implementations to different files
+
 use chrono::{DateTime, TimeZone, Local};
 
 use iced::{Element, Center, Length};
-use iced::widget::{button, column, row, text, center, space, container, combo_box, table, scrollable};
+use iced::widget::{button, column, row, text, center, space, container, combo_box, table, scrollable, text_input};
 use iced::alignment::Horizontal;
 
 use plotters::{coord::Shift, prelude::*};
@@ -613,7 +615,7 @@ impl AppPages {
 					if let CurrentRecipe::Loaded(holder) = &state.calc_curr_recipe {
 						let mut answ = None;
 						if !holder.is_resources_empty() || !holder.is_products_empty(){
-							answ = Some(Message::CurrentTesat);
+							answ = Some(Message::ShowPopup);
 						}
 						answ
 					}
@@ -828,10 +830,28 @@ impl AppPages {
 		center(text("Nothing")).into()
 	}
 	
-	fn calc_overlay_view<'a>(&'a self, _state: &'a MainLayout) -> Element<'a, Message> {
+	fn calc_overlay_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
 		use iced::Theme;
 		
-		center(text("No overlay m8"))
+		let body = column![
+				text("Save recipe"),
+				text_input("Input recipe name here", &state.extra_string)
+					.on_submit(Message::CalcAcceptRecipeName)
+					.on_input(Message::ChangeExtraString)
+					.padding(APP_PADDING),
+				row![
+						button("Save")
+							.on_press(Message::CalcAcceptRecipeName),
+						button("Cancel")
+							.on_press(Message::HidePopup),
+					]
+					.spacing(APP_SPACING)
+			]
+			.align_x(Center)
+			.padding(APP_PADDING)
+			.spacing(APP_SPACING);
+		
+		center(body)
 			.style(|theme: &Theme| {
 				let palette = theme.palette();
 				let mut style = container::rounded_box(theme);
