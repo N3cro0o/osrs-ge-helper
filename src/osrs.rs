@@ -47,6 +47,7 @@ pub enum Timeseries {
 }
 
 impl Timeseries {
+	#[allow(non_snake_case)]
 	pub const fn ALL() -> [Self; 4] {
 		[Self::FiveMin, Self::OneHour, Self::SixHour, Self::TwentyFourHours]
 	}
