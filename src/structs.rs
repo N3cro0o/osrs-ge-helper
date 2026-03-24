@@ -187,6 +187,7 @@ impl AppPages {
 			AppPages::ItemView => format!("Current Page -> Item view"),
 			AppPages::Alchemy => format!("Current Page -> Alchemy view"),
 			AppPages::Calculator => format!("Current Page -> Recipe calculator"),
+			AppPages::Config => format!("Current Page -> Config"),
 			_ => format!("Current Page -> Nothing????????????"),
 		}
 	}
@@ -196,6 +197,7 @@ impl AppPages {
 			AppPages::ItemView => self.item_sidebar_view(state),
 			AppPages::Alchemy => self.alch_sidebar_view(state),
 			AppPages::Calculator => self.calc_sidebar_view(state),
+			AppPages::Config => self.config_sidebar_view(state),
 			_ => self.other_sidebar_view(),
 		}
 	}
@@ -205,7 +207,15 @@ impl AppPages {
 			AppPages::ItemView => self.item_body_view(state),
 			AppPages::Alchemy => self.alch_body_view(state),
 			AppPages::Calculator => self.calc_body_view(state),
+			AppPages::Config => self.config_body_view(state),
 			_ => self.other_body_view(),
+		}
+	}
+	
+	pub fn overlay<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
+		match self {
+			AppPages::Calculator => self.calc_overlay_view(state),
+			_ => self.other_overlay_view(),
 		}
 	}
 	
@@ -267,6 +277,21 @@ impl AppPages {
 		let sidebar = container(
 				column![
 						text("Saved recipes:").size(22),
+						space::vertical()
+					]
+					.spacing(APP_SPACING)
+					.padding(APP_PADDING)
+			)
+			.width(200)
+			.max_width(200)
+			.style(container::rounded_box);
+		sidebar.into()
+	}
+	
+	fn config_sidebar_view<'a>(&'a self, _state: &'a MainLayout) -> Element<'a, Message> {
+		let sidebar = container(
+				column![
+						text("Options:").size(22),
 						space::vertical()
 					]
 					.spacing(APP_SPACING)
@@ -582,6 +607,22 @@ impl AppPages {
 		let reset_button = button("Reset")
 			.on_press(Message::CalcResetThis);
 		
+		let save_button = button("Save")
+			.on_press_maybe(
+				{
+					if let CurrentRecipe::Loaded(holder) = &state.calc_curr_recipe {
+						let mut answ = None;
+						if !holder.is_resources_empty() || !holder.is_products_empty(){
+							answ = Some(Message::CurrentTesat);
+						}
+						answ
+					}
+					else {
+						None
+					}
+				}
+			);
+		
 		if let CurrentRecipe::Loaded(holder) = &state.calc_curr_recipe {
 			let resources_panel: Element<'a, Message>;
 			let products_panel: Element<'a, Message>;
@@ -613,8 +654,9 @@ impl AppPages {
 			
 			searchbar = center( row![
 						combo,
-						cost_text,
+						save_button,
 						space::horizontal(),
+						cost_text,
 						reset_button,
 					]
 					.spacing(APP_SPACING)
@@ -741,6 +783,7 @@ impl AppPages {
 		else {
 			searchbar = center( row![
 						combo,
+						save_button,
 						space::horizontal(),
 						reset_button,
 					]
@@ -766,8 +809,48 @@ impl AppPages {
 		}
 	}
 	
+	fn config_body_view<'a>(&self, state: &'a MainLayout) -> Element<'a, Message> {
+		let body = center(
+				column![
+						text("Nothing to see here... for now"),
+					]
+					.spacing(APP_SPACING)
+			)
+			.height(Length::FillPortion(10))
+			.style(container::rounded_box);
+		
+		let main = center(body);
+		
+		main.into()
+	}
+	
 	fn other_body_view<'a>(&'a self) -> Element<'a, Message> {
 		center(text("Nothing")).into()
+	}
+	
+	fn calc_overlay_view<'a>(&'a self, _state: &'a MainLayout) -> Element<'a, Message> {
+		use iced::Theme;
+		
+		center(text("No overlay m8"))
+			.style(|theme: &Theme| {
+				let palette = theme.palette();
+				let mut style = container::rounded_box(theme);
+				style = style.border(iced::border::color(palette.background)
+						.rounded(iced::border::Radius::new(5.0))
+						.width(5));
+				style
+			})
+			.height(Length::Fixed(200.0))
+			.width(Length::Fixed(400.0))
+			.into()
+	}
+	
+	fn other_overlay_view<'a>(&'a self) -> Element<'a, Message> {
+		center(text("No overlay m8"))
+			.style(container::rounded_box)
+			.height(Length::Fixed(200.0))
+			.width(Length::Fixed(400.0))
+			.into()
 	}
 }
 

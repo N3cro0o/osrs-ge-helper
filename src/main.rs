@@ -1,7 +1,7 @@
 #[cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use iced::{Element, Center, Size, Pixels, Theme, Subscription};
-use iced::widget::{button, column, row, text, space, container, combo_box};
+use iced::widget::{button, column, row, text, space, container, combo_box, stack, center};
 use iced::time::{self, Instant, seconds};
 
 use num_format::{Locale, ToFormattedString};
@@ -11,6 +11,7 @@ use reqwest::blocking::{Client, Response};
 
 mod osrs;
 mod structs;
+mod save;
 
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot};
 
@@ -55,6 +56,7 @@ pub struct MainLayout {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
 	Nothing,
+	CurrentTesat,
     Increment,
     Decrement,
 	RefreshData,
@@ -221,7 +223,16 @@ impl MainLayout {
 	}
 
 	fn main_body(&self) -> Element<'_, Message> {
-		self.current_page.body(self)
+		if !self._debug_value {
+			self.current_page.body(self)
+		}
+		else {
+			stack![
+				self.current_page.body(self),
+				center(self.current_page.overlay(self)),
+			]
+			.into()
+		}
 	}
 
 	pub fn update(&mut self, message: Message) {
@@ -233,7 +244,6 @@ impl MainLayout {
 					Err(err) => println!("{err}"),
 				};
 				self.bond_sell_price = self.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
-				self._debug_value = !self._debug_value;
 				self.create_combo_box_data();
 			}
 			
@@ -285,7 +295,6 @@ impl MainLayout {
 					Err(err) => println!("{err}"),
 				};
 				self.bond_sell_price = self.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
-				self._debug_value = !self._debug_value;
 				self.create_combo_box_data();
 			}
 			
@@ -352,6 +361,10 @@ impl MainLayout {
 			
 			Message::CalcResetThis => {
 				self.calc_curr_recipe = CurrentRecipe::new();
+			}
+			
+			Message::CurrentTesat => {
+				self._debug_value = !self._debug_value;
 			}
 			
 			_ => {
