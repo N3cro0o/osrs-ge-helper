@@ -1,6 +1,7 @@
 // TODO: Refactor AppPages implementations to different files
 
 use chrono::{TimeZone, Local};
+use serde::{Serialize, Deserialize};
 
 use iced::{Element, Length};
 use iced::widget::{text, center, container};
@@ -34,11 +35,20 @@ pub enum AppPages {
 	Config,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RecipeElement (usize, usize);
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RecipeHolder {
 	calc_curr_resources: Vec<RecipeElement>,
+	#[serde(default)]
+	calc_curr_resources_extra: Vec<usize>,
 	calc_curr_products: Vec<RecipeElement>,
+	#[serde(default)]
+	calc_curr_products_extra: Vec<usize>,
+	pub description: String,
+	pub label: String,
+	pub id: usize,
 }
 
 pub enum CurrentRecipe {
@@ -240,6 +250,10 @@ impl CurrentRecipe {
 	pub fn new() -> Self {
 		Self::Loaded(RecipeHolder::default())
 	}
+	
+	pub fn from(data: RecipeHolder) -> Self{
+		Self::Loaded(data)
+	}
 }
 
 impl Default for CurrentRecipe {
@@ -255,6 +269,24 @@ impl RecipeHolder {
 	
 	pub fn is_resources_empty(&self) -> bool {
 		self.calc_curr_resources.is_empty()
+	}
+	
+	pub fn is_products_empty_extra(&self) -> bool {
+		self.calc_curr_products_extra.is_empty()
+	}
+	
+	pub fn is_resources_empty_extra(&self) -> bool {
+		self.calc_curr_resources_extra.is_empty()
+	}
+	
+	pub fn set_id(&mut self, new_id: usize) -> &mut Self {
+		self.id = new_id;
+		self
+	}	
+	
+	pub fn set_label(&mut self, new_label: String) -> &mut Self {
+		self.label = new_label;
+		self
 	}
 	
 	pub fn resources_iter(&self) -> std::slice::Iter<'_, RecipeElement> {
@@ -306,7 +338,12 @@ impl Default for RecipeHolder {
 	fn default() -> Self {
 		RecipeHolder {
 			calc_curr_resources: vec![],
+			calc_curr_resources_extra: vec![],
 			calc_curr_products: vec![],
+			calc_curr_products_extra: vec![],
+			description: String::from("..."),
+			label: String::from("New recipe"),
+			id: 0,
 		}
 	}
 }

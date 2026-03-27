@@ -52,6 +52,7 @@ pub struct MainLayout {
 	pub table_vec_offset: usize,
 	
 	pub calc_curr_recipe: CurrentRecipe,
+	pub calc_saved_recipes: Vec<String>,
 	
 	pub extra_string: String,
 }
@@ -60,8 +61,6 @@ pub struct MainLayout {
 pub enum Message {
 	Nothing,
 	CurrentTesat,
-    Increment,
-    Decrement,
 	RefreshData,
 	AddItem(osrs::DataHolder),
 	SelectItem(osrs::DataHolder),
@@ -81,6 +80,7 @@ pub enum Message {
 	CalcRemoveProduct(usize),
 	CalcResetThis,
 	CalcAcceptRecipeName,
+	CalcSelectItem(usize),
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
 	ShowPopup,
@@ -89,7 +89,13 @@ pub enum Message {
 
 impl MainLayout {
 	pub fn new() -> Self {
-		let vec: Vec<osrs::DataHolder> = vec![];
+		let vec = match save::load_recipes_vec() {
+			Ok(v) => v,
+			Err(err) => {
+				eprintln!("Cannot get recipe data. {}", err.to_string());
+				vec![]
+			}
+		};
 		let theme = Some(Theme::CatppuccinFrappe);
 		let mut layout = MainLayout {
 			start_time: Instant::now(),
@@ -97,7 +103,7 @@ impl MainLayout {
 			
 			_debug_value: false,
 			data: vec![],
-			combo_data: combo_box::State::new(vec),
+			combo_data: combo_box::State::new(vec![]),
 			latest_ge_data: osrs::LatestData::default(),
 			item_volume: osrs::VolumeData::default(),
 			bond_sell_price: None,
@@ -119,9 +125,12 @@ impl MainLayout {
 			table_vec_offset: 0,
 			
 			calc_curr_recipe: CurrentRecipe::default(),
+			calc_saved_recipes: vec,
+			
 			extra_string: String::new(),
 		};
 		layout.update(Message::RefreshData);
+		dbg!(&layout.calc_saved_recipes);
 		layout
 	}
 	
@@ -356,7 +365,7 @@ impl MainLayout {
 			
 			Message::CalcRemoveProduct(item_id) => {
 				if let Some(_item) = self.get_item_by_id(item_id) {
-					if let CurrentRecipe::Loaded( holder) = &mut self.calc_curr_recipe {
+					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
 						if let Some(pos) = holder.products_iter().position(|data_tuple| item_id == data_tuple.id()) { // check if exists
 							holder.remove_one_from_products(pos);
 						}
@@ -394,7 +403,25 @@ impl MainLayout {
 			}
 			
 			Message::CalcAcceptRecipeName => {
-				println!("Add save logic");
+				if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
+					holder.set_id(self.calc_saved_recipes.len()).set_label(self.extra_string.clone());
+					if let Err(err) = save::save_recipe(&holder) {
+						eprintln!("{}", err.to_string());
+						return;
+					}
+					self.popup_ready = false;
+				}
+			}
+			
+			Message::CalcSelectItem(id) => {
+				let data = match save::load_recipe(id) {
+					Ok(d) => d,
+					Err(err) => {
+						eprintln!("{err}");
+						return;
+					}
+				};
+				self.calc_curr_recipe = CurrentRecipe::from(data);
 			}
 			
 			Message::ChangeExtraString(string) => {

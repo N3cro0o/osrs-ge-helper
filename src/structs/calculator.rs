@@ -7,10 +7,23 @@ use crate::{APP_PADDING, APP_SPACING, COMBOBOX_MENU_HEIGHT};
 use crate::structs;
 
 impl structs::AppPages {
-	pub fn calc_sidebar_view<'a>(&'a self, _state: &'a MainLayout) -> Element<'a, Message> {
+	pub fn calc_sidebar_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
+		let mut button_vec: Vec<Element<'_, Message>> = vec![];
+		for data in state.calc_saved_recipes.iter(){
+			let str_offset = data.find(' ').unwrap_or(0);
+			let val = data[..str_offset].to_string().parse::<usize>().unwrap_or_default();
+			button_vec.push(
+				button(text(&data[str_offset + 1..]))
+					.on_press_with(move || Message::CalcSelectItem(val))
+					.into()
+				);
+		}
+		let button_column = iced::widget::Column::from_vec(button_vec)
+			.spacing(APP_SPACING);
 		let sidebar = container(
 				column![
 						text("Saved recipes:").size(22),
+						button_column,
 						space::vertical()
 					]
 					.spacing(APP_SPACING)
