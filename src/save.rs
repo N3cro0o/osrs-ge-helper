@@ -97,6 +97,28 @@ pub fn load_recipe(id: usize) -> io::Result<RecipeHolder> {
 	Ok(data)
 }
 
+pub fn delete_recipe(id: usize) -> io::Result<()> {
+	let vec = load_recipes_vec()?;
+	let mut target: Option<String> = None;
+	for files in vec.iter(){
+		let id_offset = files.find(' ').unwrap_or(files.len());
+		let file_id = files[..id_offset].to_string().parse::<usize>().unwrap_or(usize::MAX);
+		if id == file_id {
+			target = Some(files[id_offset + 1..].to_string());
+			break;
+		}
+	}
+	if let None = target { return Err(Error::new(ErrorKind::Other, format!("Cannot find file with id {id}"))); }
+	let target = target.unwrap();
+	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
+	let mut path = path::PathBuf::from(path);
+	path.push(DATA_DIR);
+	path.push(RECIPES_DIR);
+	path.push(format!("{}-{}.xml", id, target));
+	fs::remove_file(path)?;
+	Ok(())
+}
+
 fn check_dir(path: &path::PathBuf) -> bool {
 	use std::path::Path;
 	Path::new(path).exists()

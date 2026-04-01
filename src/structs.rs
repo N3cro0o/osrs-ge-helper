@@ -38,6 +38,13 @@ pub enum AppPages {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RecipeElement (usize, usize);
 
+#[derive(Debug)]
+pub enum RecipePages {
+	CalculatorPage,
+	NotesPage,
+	ProfitPage,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RecipeHolder {
 	calc_curr_resources: Vec<RecipeElement>,
@@ -46,9 +53,17 @@ pub struct RecipeHolder {
 	calc_curr_products: Vec<RecipeElement>,
 	#[serde(default)]
 	calc_curr_products_extra: Vec<usize>,
-	pub description: String,
+	pub description: String, // TODO: change for text_editor content
 	pub label: String,
 	pub id: usize,
+	#[serde(skip)]
+	pub page: RecipePages,
+	#[serde(skip)]
+	pub resc_cost: isize,
+	#[serde(skip)]
+	pub prod_cost: isize,
+	#[serde(skip)]
+	pub reci_cost: isize,
 }
 
 pub enum CurrentRecipe {
@@ -161,7 +176,13 @@ impl Chart<Message> for ItemViewPlot {
 		chart
 			.configure_mesh()
 			.x_labels(7)
-			.x_label_formatter(&|x| Local.timestamp_opt(*x as i64, 0).unwrap().to_string())
+			.x_label_formatter(&|x| {
+				let local_time = Local.timestamp_opt(*x as i64, 0).single();
+				match local_time {
+					Some(time) => format!("{}", time.format("%d.%m.%Y %H:%M")),
+					None => x.to_string(),
+				}
+			})
 			.y_labels(5)
 			.draw()
 			.unwrap();
@@ -279,13 +300,21 @@ impl RecipeHolder {
 		self.calc_curr_resources_extra.is_empty()
 	}
 	
+	/// Update ID only if ID field is empty (ID == usize::MAX)
 	pub fn set_id(&mut self, new_id: usize) -> &mut Self {
-		self.id = new_id;
+		if self.id == usize::MAX {
+			self.id = new_id;
+		}
 		self
 	}	
 	
 	pub fn set_label(&mut self, new_label: String) -> &mut Self {
 		self.label = new_label;
+		self
+	}
+	
+	pub fn set_desc(&mut self, new_description: String) -> &mut Self {
+		self.description = new_description;
 		self
 	}
 	
@@ -341,9 +370,13 @@ impl Default for RecipeHolder {
 			calc_curr_resources_extra: vec![],
 			calc_curr_products: vec![],
 			calc_curr_products_extra: vec![],
-			description: String::from("..."),
+			description: String::new(),
 			label: String::from("New recipe"),
-			id: 0,
+			id: usize::MAX,
+			page: RecipePages::CalculatorPage,
+			resc_cost: 0,
+			prod_cost: 0,
+			reci_cost: 0,
 		}
 	}
 }
@@ -355,5 +388,11 @@ impl RecipeElement {
 	
 	pub fn num(&self) -> usize {
 		self.1
+	}
+}
+
+impl Default for RecipePages {
+	fn default() -> Self {
+		Self::CalculatorPage
 	}
 }

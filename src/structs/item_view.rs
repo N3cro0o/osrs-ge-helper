@@ -155,7 +155,9 @@ impl structs::AppPages {
 				index += 1;
 			}
 		}
-		
+		let plotter:Option<Element<'_, Message>> = if state.last_item_ge.is_some() { Some(state.item_view_plot().view().into()) }
+				else { Some(space::vertical().into()) };
+			
 		let body_center = column![
 				row![
 						space::horizontal(),
@@ -163,7 +165,7 @@ impl structs::AppPages {
 						space::horizontal(),
 					]
 					.spacing(APP_SPACING),
-				state.item_view_plot().view(),
+				plotter,
 			];
 		
 		let body = center(

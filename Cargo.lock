@@ -2815,7 +2815,7 @@ dependencies = [
 
 [[package]]
 name = "osrs-ge-calc"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "dirs",
@@ -2826,6 +2826,7 @@ dependencies = [
  "plotters-iced2",
  "reqwest",
  "serde",
+ "serde-xml-rs",
  "serde_json",
  "webbrowser",
 ]
@@ -3565,6 +3566,18 @@ checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
  "serde_core",
  "serde_derive",
+]
+
+[[package]]
+name = "serde-xml-rs"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc2215ce3e6a77550b80a1c37251b7d294febaf42e36e21b7b411e0bf54d540d"
+dependencies = [
+ "log",
+ "serde",
+ "thiserror 2.0.18",
+ "xml",
 ]
 
 [[package]]
@@ -5457,6 +5470,12 @@ name = "xkeysym"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
+
+[[package]]
+name = "xml"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8aa498d22c9bbaf482329839bc5620c46be275a19a812e9a22a2b07529a642a"
 
 [[package]]
 name = "xml-rs"

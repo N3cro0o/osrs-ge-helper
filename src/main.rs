@@ -1,7 +1,8 @@
-#[cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![windows_subsystem = "windows"]
 
 use iced::{Element, Center, Size, Pixels, Theme, Subscription};
 use iced::widget::{button, column, row, text, space, container, combo_box, stack, center};
+use iced::widget::text_editor::{self, Content};
 use iced::time::{self, Instant, seconds};
 
 use num_format::{Locale, ToFormattedString};
@@ -15,7 +16,7 @@ mod save;
 
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot};
 
-pub const APP_VERSION: &str = "0.3.";
+pub const APP_VERSION: &str = "0.3.0";
 pub const BOND_ID: usize = 13190;
 pub const USER_AGENT_MESSAGE: &str = "N3cro0oDev (discord: necro0o) - GE Price Calc Prototype";
 pub const APP_SPACING: Pixels = Pixels(5.0);
@@ -53,8 +54,11 @@ pub struct MainLayout {
 	
 	pub calc_curr_recipe: CurrentRecipe,
 	pub calc_saved_recipes: Vec<String>,
+	pub calc_description: Content,
+	pub calc_price_multi: usize,
 	
-	pub extra_string: String,
+	pub extra_string: String, // In Calc => recipe label
+	pub extra_bool: bool, // In Calc => delete mode
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -81,6 +85,11 @@ pub enum Message {
 	CalcResetThis,
 	CalcAcceptRecipeName,
 	CalcSelectItem(usize),
+	CalcDeleteItem(usize),
+	CalcEnableDelMode,
+	CalcDisableDelMode,
+	CalcChangeItemDesc(text_editor::Action),
+	CalcChangePriceMultiplier(String),
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
 	ShowPopup,
@@ -126,8 +135,11 @@ impl MainLayout {
 			
 			calc_curr_recipe: CurrentRecipe::default(),
 			calc_saved_recipes: vec,
+			calc_description: Content::new(),
+			calc_price_multi: 1,
 			
 			extra_string: String::new(),
+			extra_bool: false,
 		};
 		layout.update(Message::RefreshData);
 		dbg!(&layout.calc_saved_recipes);
@@ -225,11 +237,12 @@ impl MainLayout {
 		let sidebar = self.current_page.sidebar(self);
 		let config_panel = container(
 				row![
-						text(format!("v {APP_VERSION}")),
+						text(format!("V. {APP_VERSION}")),
 						space::horizontal(),
 						button("config")
 							.on_press(Message::ChangePage(AppPages::Config)),
 					]
+					.padding(APP_PADDING)
 			)
 			.width(200)
 			.max_width(200)
@@ -348,6 +361,7 @@ impl MainLayout {
 					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
 						holder.add_one_to_products(item_id);
 					}
+					self.recalculate_recipe_prices();
 					self.update(Message::HidePopup);
 				}
 			}
@@ -395,7 +409,22 @@ impl MainLayout {
 			
 			Message::CalcResetThis => {
 				self.calc_curr_recipe = CurrentRecipe::new();
+				self.calc_description = Content::new();
 				self.update(Message::HidePopup);
+			}
+			
+			Message::CalcChangePriceMultiplier(multi_str) => {
+				let multi = match multi_str.parse::<usize>() {
+					Ok(d) => d,
+					Err(err) => {
+						eprintln!("{}", err.to_string());
+						return;
+					}
+				};
+				if multi > 0 {
+					self.calc_price_multi = multi;
+					self.recalculate_recipe_prices();
+				}
 			}
 			
 			Message::CurrentTesat => {
@@ -404,12 +433,21 @@ impl MainLayout {
 			
 			Message::CalcAcceptRecipeName => {
 				if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
-					holder.set_id(self.calc_saved_recipes.len()).set_label(self.extra_string.clone());
+					holder.set_id(self.calc_saved_recipes.len()).set_label(self.extra_string.clone())
+						.set_desc(self.calc_description.text());
 					if let Err(err) = save::save_recipe(&holder) {
 						eprintln!("{}", err.to_string());
 						return;
 					}
 					self.popup_ready = false;
+					for data in self.calc_saved_recipes.iter() {
+						let str_offset = data.find(' ').unwrap_or(0);
+						let val = data[..str_offset].to_string().parse::<usize>().unwrap_or_default();
+						if holder.id == val {
+							return;
+						}
+					}
+					self.calc_saved_recipes.push(format!("{} {}", holder.id, holder.label.clone()));
 				}
 			}
 			
@@ -421,7 +459,42 @@ impl MainLayout {
 						return;
 					}
 				};
+				self.extra_string = data.label.clone();
+				self.calc_description = Content::with_text(&data.description);
 				self.calc_curr_recipe = CurrentRecipe::from(data);
+				self.recalculate_recipe_prices();
+			}
+			
+			Message::CalcDeleteItem(id) => {
+				if let Err(err) = save::delete_recipe(id) {
+					eprintln!("{}", err);
+					return;
+				}
+				self.update(Message::CalcDisableDelMode);
+				for i in 0..self.calc_saved_recipes.len() {
+					let data = &self.calc_saved_recipes[i];
+					let str_offset = data.find(' ').unwrap_or(0);
+					let val = data[..str_offset].to_string().parse::<usize>().unwrap_or_default();
+					if id == val {
+						self.calc_saved_recipes.remove(i);
+						break;
+					}
+				}
+				self.calc_description = Content::new();
+			}
+			
+			Message::CalcChangeItemDesc(action) => {
+				if let CurrentRecipe::Loaded(_) = self.calc_curr_recipe {
+					self.calc_description.perform(action)
+				}
+			}
+			
+			Message::CalcEnableDelMode => {
+				self.extra_bool = true;
+			}
+			
+			Message::CalcDisableDelMode => {
+				self.extra_bool = false;
 			}
 			
 			Message::ChangeExtraString(string) => {
@@ -438,18 +511,48 @@ impl MainLayout {
 		match page {
 			AppPages::Alchemy => {
 				self.calculate_best_alchemy();
+				self.extra_string.clear();
+			}
+			AppPages::Calculator => {
+				if let CurrentRecipe::Loaded(data) = &self.calc_curr_recipe {
+					self.extra_string = data.label.clone();
+				}
+				else { self.extra_string.clear(); }
 			}
 			_ => {
 				self.last_item = None;
 				self.last_item_ge = None;
+				self.extra_string.clear();
 				self.plotter.reset_data();
 			}
 		}
 		self.current_page = page;
 		self.popup_ready = false;
-		if !self.extra_string.is_empty() { println!("Extra string value: {}", self.extra_string); }
-		self.extra_string.clear();
 		println!("{}", self.current_page.return_current_page_info());
+	}
+	
+	fn recalculate_recipe_prices(&mut self) {
+		if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
+			let mut resr_cost: isize = 0;
+			let mut prod_cost: isize = 0;
+			for data_tuple in holder.resources_iter() {
+				let latest_data = match self.latest_ge_data.get_data_by_id(data_tuple.id()) {
+					Some(data) => data,
+					None => continue,
+				};
+				resr_cost += (latest_data.buy_price().unwrap_or_default() * data_tuple.num()) as isize;
+			}
+			holder.resc_cost = resr_cost * self.calc_price_multi as isize;
+			for data_tuple in holder.products_iter() {
+				let latest_data = match self.latest_ge_data.get_data_by_id(data_tuple.id()) {
+					Some(data) => data,
+					None => continue,
+				};
+				prod_cost += (latest_data.buy_price().unwrap_or_default() * data_tuple.num()) as isize;
+			}
+			holder.prod_cost = prod_cost * self.calc_price_multi as isize;
+			holder.reci_cost = holder.prod_cost - holder.resc_cost;
+		}
 	}
 	
 	pub fn get_item_by_id (&self, id: usize) -> Option<&osrs::DataHolder> {
