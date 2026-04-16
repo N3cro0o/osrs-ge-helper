@@ -120,22 +120,24 @@ impl structs::AppPages {
 						start_offset
 					}
 				};
-				println!("Offsets [{start_offset} - {})", ALCHEMY_VEC_SIZE + end_offset);
+				crate::log_mess!("Offsets [{start_offset} - {})", ALCHEMY_VEC_SIZE + end_offset);
 				table(columns, &state.best_items_alchemy[0 + start_offset..ALCHEMY_VEC_SIZE + end_offset])
 			}
 			else {
-				println!("ERROR. No alchemy data");
+				crate::log_mess!("ERROR. No alchemy data");
 				table(columns, &state.best_items_alchemy)
 			}
 		};
 		let table_buttons = row![
 			button("Previous")
 				.on_press(Message::AlchemyDecreaseOffset),
+			button("Filters")
+				.on_press(Message::Nothing),
 			button("Next")
 				.on_press(Message::AlchemyIncreaseOffset),
 			]
 			.padding(APP_PADDING)
-			.spacing(200);
+			.spacing(APP_SPACING);
 		let main = center(
 			column![
 					scrollable(table),

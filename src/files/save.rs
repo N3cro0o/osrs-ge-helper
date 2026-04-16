@@ -1,10 +1,9 @@
-const DATA_DIR: &str = "OSRE-calculator";
-const RECIPES_DIR: &str = "recipes";
-
 use std::io::{self, Error, ErrorKind, Write, Read};
 use std::{path, fs};
 
 use crate::structs::RecipeHolder;
+use super::{check_dir, create_dir};
+use super::{DATA_DIR, RECIPES_DIR};
 
 pub fn save_recipe(data: &RecipeHolder) -> io::Result<()> {
 	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
@@ -60,7 +59,7 @@ pub fn load_recipes_vec() -> io::Result<Vec<String>> {
 				string[..str_offset].to_string()
 			}
 			Err(_) => {
-				eprintln!("Cannot parse OsStrint to String... continuing");
+				crate::log_err!("Cannot parse OsStrint to String... continuing");
 				continue;
 			}
 		};
@@ -117,13 +116,4 @@ pub fn delete_recipe(id: usize) -> io::Result<()> {
 	path.push(format!("{}-{}.xml", id, target));
 	fs::remove_file(path)?;
 	Ok(())
-}
-
-fn check_dir(path: &path::PathBuf) -> bool {
-	use std::path::Path;
-	Path::new(path).exists()
-}
-
-fn create_dir(path: &path::PathBuf) -> io::Result<()> {
-	fs::create_dir_all(path)
 }

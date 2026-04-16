@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+#[cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use iced::{Element, Center, Size, Pixels, Theme, Subscription};
 use iced::widget::{button, column, row, text, space, container, combo_box, stack, center};
@@ -12,7 +12,7 @@ use reqwest::blocking::{Client, Response};
 
 mod osrs;
 mod structs;
-mod save;
+mod files;
 
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot};
 
@@ -98,10 +98,10 @@ pub enum Message {
 
 impl MainLayout {
 	pub fn new() -> Self {
-		let vec = match save::load_recipes_vec() {
+		let vec = match files::load_recipes_vec() {
 			Ok(v) => v,
 			Err(err) => {
-				eprintln!("Cannot get recipe data. {}", err.to_string());
+				log_err!("Cannot get recipe data. {}", err.to_string());
 				vec![]
 			}
 		};
@@ -142,7 +142,7 @@ impl MainLayout {
 			extra_bool: false,
 		};
 		layout.update(Message::RefreshData);
-		dbg!(&layout.calc_saved_recipes);
+		log_mess!("{:#?}", &layout.calc_saved_recipes);
 		layout
 	}
 	
@@ -269,10 +269,10 @@ impl MainLayout {
 	pub fn update(&mut self, message: Message) {
 		match message {
 			Message::RefreshData => {
-				println!("Get data from OSRS wiki...");
+				log_mess!("Get data from OSRS wiki...");
 				match self.refresh_data() {
-					Ok(size) => println!("Done. Found {size} items"),
-					Err(err) => println!("{err}"),
+					Ok(size) => log_mess!("Done. Found {} items", size),
+					Err(err) => log_err!("{}", err),
 				};
 				self.bond_sell_price = self.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
 				self.create_combo_box_data();
@@ -293,11 +293,11 @@ impl MainLayout {
 			Message::OpenWiki => {
 				if let Some(item) = self.last_item.clone() {
 					if webbrowser::open(&format!("https://oldschool.runescape.wiki/w/{}", item.name)).is_err() {
-						println!("Cannot open wiki");
+						log_mess!("Cannot open wiki");
 					}
 				}
 				else {
-					println!("No item found");
+					log_err!("No item found");
 				}
 			}
 			
@@ -320,10 +320,10 @@ impl MainLayout {
 			}
 			
 			Message::RefreshTick(now) => {
-				println!("Auto-refresh data from OSRS wiki at {}s ...", now.duration_since(self.start_time).as_secs_f32());
+				log_mess!("Auto-refresh data from OSRS wiki at {}s ...", now.duration_since(self.start_time).as_secs_f32());
 				match self.refresh_data() {
-					Ok(size) => println!("Done. Found {size} items"),
-					Err(err) => println!("{err}"),
+					Ok(size) => log_mess!("Done. Found {} items", size),
+					Err(err) => log_err!("{}", err),
 				};
 				self.bond_sell_price = self.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
 				self.create_combo_box_data();
@@ -333,14 +333,12 @@ impl MainLayout {
 				if self.table_vec_offset != 0 {
 					self.table_vec_offset -= 1;
 				}
-				println!("Offset {}, size {}", self.table_vec_offset * ALCHEMY_VEC_SIZE, self.best_items_alchemy.len());
 			}	
 			
 			Message::AlchemyIncreaseOffset => {
 				if (self.table_vec_offset + 1) * ALCHEMY_VEC_SIZE < self.best_items_alchemy.len() {
 					self.table_vec_offset += 1;
 				}
-				println!("Offset {}, size {}", self.table_vec_offset * ALCHEMY_VEC_SIZE, self.best_items_alchemy.len());
 			}
 			
 			Message::AlchemyCheckItem(item) => {
@@ -417,7 +415,7 @@ impl MainLayout {
 				let multi = match multi_str.parse::<usize>() {
 					Ok(d) => d,
 					Err(err) => {
-						eprintln!("{}", err.to_string());
+						log_err!("{}", err.to_string());
 						return;
 					}
 				};
@@ -435,8 +433,8 @@ impl MainLayout {
 				if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
 					holder.set_id(self.calc_saved_recipes.len()).set_label(self.extra_string.clone())
 						.set_desc(self.calc_description.text());
-					if let Err(err) = save::save_recipe(&holder) {
-						eprintln!("{}", err.to_string());
+					if let Err(err) = files::save_recipe(&holder) {
+						log_err!("{}", err.to_string());
 						return;
 					}
 					self.popup_ready = false;
@@ -452,10 +450,10 @@ impl MainLayout {
 			}
 			
 			Message::CalcSelectItem(id) => {
-				let data = match save::load_recipe(id) {
+				let data = match files::load_recipe(id) {
 					Ok(d) => d,
 					Err(err) => {
-						eprintln!("{err}");
+						log_err!("{}", err);
 						return;
 					}
 				};
@@ -466,8 +464,8 @@ impl MainLayout {
 			}
 			
 			Message::CalcDeleteItem(id) => {
-				if let Err(err) = save::delete_recipe(id) {
-					eprintln!("{}", err);
+				if let Err(err) = files::delete_recipe(id) {
+					log_err!("{}", err);
 					return;
 				}
 				self.update(Message::CalcDisableDelMode);
@@ -502,7 +500,7 @@ impl MainLayout {
 			}
 			
 			_ => {
-				println!("JP2 GMD");
+				log_mess!("Invalid Message detected");
 			}
 		}
     }
@@ -528,7 +526,7 @@ impl MainLayout {
 		}
 		self.current_page = page;
 		self.popup_ready = false;
-		println!("{}", self.current_page.return_current_page_info());
+		log_mess!("{}", self.current_page.return_current_page_info());
 	}
 	
 	fn recalculate_recipe_prices(&mut self) {
@@ -609,7 +607,7 @@ impl MainLayout {
 			output.push((item.id, diff));
 		}
 		if output.is_empty() {
-			println!("ERROR. No alchemy data");
+			log_err!("ERROR. No alchemy data");
 			return;
 		}
 		output.sort_by(|a, b| b.1.cmp(&a.1));
@@ -665,14 +663,14 @@ impl MainLayout {
 	}
 	
 	fn select_new_item(&mut self, item: &osrs::DataHolder){
-		println!("Selected new item: {}", item.id);
+		log_mess!("Selected new item: {}", item.id);
 		match self.get_price_from_id(item.id) {
 			Ok(data) => {
 				self.last_item_ge = Some(data);
 				self.last_item = Some(item.clone());
 			}
 			Err(err) => {
-				println!("{err}");
+				log_err!("{}", err);
 			}
 		}
 	}
@@ -797,6 +795,9 @@ impl Default for MainLayout {
 }
 
 fn main() -> iced::Result<> {
+	if let Err(err) = files::setup_logger() { return Err(iced::Error::ExecutorCreationFailed(err)) }; // Good enough for now, I believe more Errors should be added to iced::Error 
+	log_mess!["INIT APP"];
+	
 	let mut window_settings = iced::window::Settings::default();
 	window_settings.min_size = Some(Size::new(1280.0,720.0));
 	window_settings.size = Size::new(1280.0,720.0);
@@ -808,5 +809,6 @@ fn main() -> iced::Result<> {
 		.centered()
 		.subscription(MainLayout::subscription)
 		.title(MainLayout::title);
-	app.run()
+	let r = app.run();
+	r
 }
