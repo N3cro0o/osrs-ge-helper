@@ -16,7 +16,6 @@ mod files;
 
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot};
 
-pub const APP_VERSION: &str = "0.3.0";
 pub const BOND_ID: usize = 13190;
 pub const USER_AGENT_MESSAGE: &str = "N3cro0oDev (discord: necro0o) - GE Price Calc Prototype";
 pub const APP_SPACING: Pixels = Pixels(5.0);
@@ -57,8 +56,12 @@ pub struct MainLayout {
 	pub calc_description: Content,
 	pub calc_price_multi: usize,
 	
-	pub extra_string: String, // In Calc => recipe label
-	pub extra_bool: bool, // In Calc => delete mode
+	pub extra_string: String, // In Calc => recipe label, Alch => max price temp value,
+	pub extra_string_1: String, // Alch => min price temp value,
+	pub extra_string_2: String, // Alch => max volume temp value,
+	pub extra_string_3: String, // Alch => min volume temp value,
+	pub extra_bool: bool, // In Calc => delete mode, Alch => hide lossy items
+	pub extra_bool_1: bool, // In Alch => hide non-members items
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -72,12 +75,21 @@ pub enum Message {
 	AddItemToSaved,
 	RemoveItemFromSaved,
 	ComboNewFilter(Option<SearchFilter>),
+	AlchNewFilter(Option<SearchFilter>),
 	OpenWiki,
 	RefreshTick(Instant),
+	
 	AlchemyIncreaseOffset,
 	AlchemyDecreaseOffset,
 	AlchemyCheckItem(osrs::DataHolder),
 	AlchemyAddToFav(osrs::DataHolder),
+	AlchemyChangeMinimumPrice(String),
+	AlchemyChangeMaximumPrice(String),
+	AlchemyChangeMinimumVolume(String),
+	AlchemyChangeMaximumVolume(String),
+	AlchemyHideLossyItems(bool),
+	AlchemyHideMembersItems(bool),
+	
 	CalcAddResource(usize),
 	CalcRemoveResource(usize),
 	CalcAddProduct(usize),
@@ -90,6 +102,7 @@ pub enum Message {
 	CalcDisableDelMode,
 	CalcChangeItemDesc(text_editor::Action),
 	CalcChangePriceMultiplier(String),
+	
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
 	ShowPopup,
@@ -129,7 +142,7 @@ impl MainLayout {
 			selected_timeseries: osrs::Timeseries::FiveMin,
 			
 			fav_items_alchemy: vec![],
-			search_filter_alchemy: None,
+			search_filter_alchemy: Some(SearchFilter::default()),
 			best_items_alchemy: vec![],
 			table_vec_offset: 0,
 			
@@ -139,7 +152,11 @@ impl MainLayout {
 			calc_price_multi: 1,
 			
 			extra_string: String::new(),
+			extra_string_1: String::new(),
+			extra_string_2: String::new(),
+			extra_string_3: String::new(),
 			extra_bool: false,
+			extra_bool_1: false,
 		};
 		layout.update(Message::RefreshData);
 		log_mess!("{:#?}", &layout.calc_saved_recipes);
@@ -237,7 +254,7 @@ impl MainLayout {
 		let sidebar = self.current_page.sidebar(self);
 		let config_panel = container(
 				row![
-						text(format!("V. {APP_VERSION}")),
+						text(format!("V. {}", env!("CARGO_PKG_VERSION"))),
 						space::horizontal(),
 						button("config")
 							.on_press(Message::ChangePage(AppPages::Config)),
@@ -276,6 +293,7 @@ impl MainLayout {
 				};
 				self.bond_sell_price = self.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
 				self.create_combo_box_data();
+				self.calculate_best_alchemy();
 			}
 			
 			Message::AddItem(item) => {
@@ -319,6 +337,11 @@ impl MainLayout {
 				self.create_combo_box_data();
 			}
 			
+			Message::AlchNewFilter(filter) => {
+				self.search_filter_alchemy = filter;
+				self.calculate_best_alchemy();
+			}
+			
 			Message::RefreshTick(now) => {
 				log_mess!("Auto-refresh data from OSRS wiki at {}s ...", now.duration_since(self.start_time).as_secs_f32());
 				match self.refresh_data() {
@@ -327,23 +350,132 @@ impl MainLayout {
 				};
 				self.bond_sell_price = self.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
 				self.create_combo_box_data();
+				self.calculate_best_alchemy();
 			}
 			
 			Message::AlchemyDecreaseOffset => {
 				if self.table_vec_offset != 0 {
 					self.table_vec_offset -= 1;
 				}
+				self.update(Message::HidePopup);
 			}	
 			
 			Message::AlchemyIncreaseOffset => {
 				if (self.table_vec_offset + 1) * ALCHEMY_VEC_SIZE < self.best_items_alchemy.len() {
 					self.table_vec_offset += 1;
 				}
+				self.update(Message::HidePopup);
+			}
+			
+			Message::AlchemyChangeMinimumPrice(val) => {
+				let minimum = match val.clone().parse::<isize>() {
+					Ok(d) => d,
+					Err(err) => {
+						log_err!("{}", err.to_string());
+						return;
+					}
+				};
+				if minimum > 0 {
+					match &mut self.search_filter_alchemy {
+						Some(data) => {
+							if minimum as usize <= data.maximum_price {
+								let _ = data.change_min_price(minimum as usize);
+							}
+							self.extra_string_1 = val;
+						}
+						None => log_mess!("No alchemy filter present. continuing..."),
+					}
+				}
+			}
+			
+			Message::AlchemyChangeMaximumPrice(val) => {
+				let maximum = match val.clone().parse::<isize>() {
+					Ok(d) => d,
+					Err(err) => {
+						log_err!("{}", err.to_string());
+						return;
+					}
+				};
+				if maximum > 0 {
+					match &mut self.search_filter_alchemy {
+						Some(data) => { 
+							if maximum as usize >= data.minimum_price {
+								let _ = data.change_max_price(maximum as usize); 
+							}
+							self.extra_string = val;
+						}
+						None => log_mess!("No alchemy filter present. continuing..."),
+					}
+				}
+			}
+			
+			Message::AlchemyChangeMinimumVolume(val) => {
+				let minimum = match val.clone().parse::<isize>() {
+					Ok(d) => d,
+					Err(err) => {
+						log_err!("{}", err.to_string());
+						return;
+					}
+				};
+				if minimum > 0 {
+					match &mut self.search_filter_alchemy {
+						Some(data) => { 
+							if minimum as usize <= data.maximum_volume {
+								let _ = data.change_min_volume(minimum as usize); 
+							}
+							self.extra_string_3 = val;
+						}
+						
+						None => log_mess!("No alchemy filter present. continuing..."),
+					}
+				}
+			}
+			
+			Message::AlchemyChangeMaximumVolume(val) => {
+				let maximum = match val.clone().parse::<isize>() {
+					Ok(d) => d,
+					Err(err) => {
+						log_err!("{}", err.to_string());
+						return;
+					}
+				};
+				if maximum > 0 {
+					match &mut self.search_filter_alchemy {
+						Some(data) => { 
+							if data.minimum_volume <= maximum as usize {
+								let _ = data.change_max_volume(maximum as usize); 
+							}
+							self.extra_string_2 = val;
+						}
+						None => log_mess!("No alchemy filter present. continuing..."),
+					}
+				}
+			}
+			
+			Message::AlchemyHideLossyItems(b) => {
+				self.search_filter_alchemy = match &self.search_filter_alchemy {
+					Some(filter) => { 
+						self.extra_bool = b;
+						Some(filter.clone().change_lossy_items(b))
+					}
+					None => None,
+				};
+			}
+			
+			Message::AlchemyHideMembersItems(b) => {
+				self.search_filter_alchemy = match &self.search_filter_alchemy {
+					Some(filter) => { 
+						self.extra_bool_1 = b;
+						Some(filter.clone().change_members_items(b))
+					}
+					None => None,
+				};
 			}
 			
 			Message::AlchemyCheckItem(item) => {
 				self.update_page(AppPages::ItemView);
 				self.select_new_item(&item);
+				let _ = self.get_timeseries_data(&item);
 			}
 			
 			Message::CalcAddResource(item_id) => {
@@ -389,12 +521,17 @@ impl MainLayout {
 			Message::ShowPopup => {
 				if !self.popup_ready {
 					self.popup_ready = true;
+				} // Now every button works as a toggle
+				else {
+					self.popup_ready = false;
+					self.extra_stuff_to_do_once_popup_closes();
 				}
 			}
 			
 			Message::HidePopup => {
 				if self.popup_ready {
 					self.popup_ready = false;
+					self.extra_stuff_to_do_once_popup_closes();
 				}
 			}
 			
@@ -412,7 +549,7 @@ impl MainLayout {
 			}
 			
 			Message::CalcChangePriceMultiplier(multi_str) => {
-				let multi = match multi_str.parse::<usize>() {
+				let multi = match multi_str.parse::<isize>() {
 					Ok(d) => d,
 					Err(err) => {
 						log_err!("{}", err.to_string());
@@ -420,7 +557,7 @@ impl MainLayout {
 					}
 				};
 				if multi > 0 {
-					self.calc_price_multi = multi;
+					self.calc_price_multi = multi as usize;
 					self.recalculate_recipe_prices();
 				}
 			}
@@ -509,24 +646,62 @@ impl MainLayout {
 		match page {
 			AppPages::Alchemy => {
 				self.calculate_best_alchemy();
-				self.extra_string.clear();
+				if let Some(data) = &self.search_filter_alchemy {
+					self.extra_string = data.maximum_price.to_string();
+					self.extra_string_1 = data.minimum_price.to_string();
+					self.extra_string_2 = data.maximum_volume.to_string();
+					self.extra_string_3 = data.minimum_volume.to_string();
+					self.extra_bool = data.hide_loss_alch;
+					self.extra_bool_1 = data.only_non_member_items;
+				}
+				else {
+					self.extra_string.clear();
+					self.extra_string_1.clear();
+					self.extra_string_2.clear();
+					self.extra_string_3.clear();
+					self.extra_bool = false;
+					self.extra_bool_1 = false;
+				}
 			}
 			AppPages::Calculator => {
 				if let CurrentRecipe::Loaded(data) = &self.calc_curr_recipe {
 					self.extra_string = data.label.clone();
 				}
 				else { self.extra_string.clear(); }
+				self.extra_string_1.clear();
+				self.extra_string_2.clear();
+				self.extra_string_3.clear();
+				self.extra_bool = false;
+				self.extra_bool_1 = false;
 			}
 			_ => {
 				self.last_item = None;
 				self.last_item_ge = None;
 				self.extra_string.clear();
+				self.extra_string_1.clear();
+				self.extra_string_2.clear();
+				self.extra_string_3.clear();
 				self.plotter.reset_data();
+				self.extra_bool = false;
+				self.extra_bool_1 = false;
 			}
 		}
 		self.current_page = page;
 		self.popup_ready = false;
 		log_mess!("{}", self.current_page.return_current_page_info());
+	}
+	
+	fn extra_stuff_to_do_once_popup_closes(&mut self) {
+		match self.current_page {
+			AppPages::Alchemy => {
+				self.calculate_best_alchemy();
+				self.table_vec_offset = 0;
+			}
+			
+			_ => {
+				
+			}
+		}
 	}
 	
 	fn recalculate_recipe_prices(&mut self) {
@@ -586,12 +761,6 @@ impl MainLayout {
 		let options = self.create_filtered_vec(&self.search_filter_alchemy);
 		let mut output: Vec<(usize, isize)> = vec![];
 		for item in options {
-			// volume check
-			let volume = match self.item_volume.find(item.id) {
-				Some(data) => data,
-				None => continue,
-			};
-			if volume < ALCHEMY_DAILY_VOLUME_LIMIT { continue };
 			// calc alchemy cost
 			let data = item.basic_data().2;
 			let value = match self.latest_ge_data.get_data_by_id(item.id) {
@@ -617,10 +786,24 @@ impl MainLayout {
 	pub fn create_filtered_vec(&self, filter: &Option<SearchFilter>) -> Vec<osrs::DataHolder> {
 		let mut new_vec = vec![];
 		for item in self.data.iter() {
-			if item.check_filter(filter) {
+			let value = match self.latest_ge_data.get_data_by_id(item.id) {
+				Some(data) => {
+					match data.buy_price() {
+						Some(val) => val,
+						None => continue,
+					}
+				}
+				None => continue,
+			};
+			let volume = match self.item_volume.find(item.id) {
+				Some(data) => data,
+				None => continue,
+			};
+			if item.check_filter(filter, value, volume) {
 				new_vec.push(item.clone());
 			}
 		}
+		log_mess!("Size of new vector: {}", new_vec.len());
 		new_vec
 	}
 	

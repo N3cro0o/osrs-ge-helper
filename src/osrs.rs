@@ -103,9 +103,18 @@ impl DataHolder {
 		tuple
 	}
 	
-	pub fn check_filter(&self, filter: &Option<structs::SearchFilter>) -> bool {
+	pub fn check_filter(&self, filter: &Option<structs::SearchFilter>, price: usize, volume: usize) -> bool {
 		if let Some(f) = filter {
 			if f.only_non_member_items && self.members {
+				return false;
+			}
+			if price < f.minimum_price || price > f.maximum_price {
+				return false;
+			}
+			if f.hide_loss_alch && (self.basic_data().2 as isize - price as isize) < 0 {
+				return false;
+			}
+			if volume < f.minimum_volume || volume > f.maximum_volume {
 				return false;
 			}
 			true

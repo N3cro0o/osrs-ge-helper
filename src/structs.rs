@@ -23,7 +23,12 @@ pub const SKIP_VARIABLE: u16 = 0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchFilter {
-	pub only_non_member_items: bool
+	pub only_non_member_items: bool,
+	pub minimum_price: usize,
+	pub maximum_price: usize,
+	pub minimum_volume: usize,
+	pub maximum_volume: usize,
+	pub hide_loss_alch: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -199,13 +204,52 @@ impl Chart<Message> for ItemViewPlot {
 impl SearchFilter {
 	pub fn new() -> Self {
 		SearchFilter {
-			only_non_member_items: false
+			only_non_member_items: false,
+			minimum_price: 1,
+			maximum_price: usize::MAX,
+			minimum_volume: 1,
+			maximum_volume: usize::MAX,
+			hide_loss_alch: false,
 		}
 	}
 	
 	pub fn flip_member_items(&mut self) -> Self {
 		self.only_non_member_items = !self.only_non_member_items;
 		self.clone()
+	}
+	
+	pub fn flip_lossy_items(&mut self) -> Self {
+		self.hide_loss_alch = !self.hide_loss_alch;
+		self.clone()
+	}
+	
+	pub fn change_lossy_items(&mut self, val: bool) -> Self {
+		self.hide_loss_alch = val;
+		self.clone()
+	}
+	
+	pub fn change_members_items(&mut self, val: bool) -> Self {
+		self.only_non_member_items = val;
+		self.clone()
+	}
+	
+	pub fn change_min_price(&mut self, val: usize) -> &mut Self {
+		self.minimum_price = val;
+		self
+	}	
+	
+	pub fn change_min_volume(&mut self, val: usize) -> &mut Self {
+		self.minimum_volume = val;
+		self
+	}	
+	pub fn change_max_price(&mut self, val: usize) -> &mut Self {
+		self.maximum_price = val;
+		self
+	}
+	
+	pub fn change_max_volume(&mut self, val: usize) -> &mut Self {
+		self.maximum_volume = val;
+		self
 	}
 }
 
@@ -245,6 +289,7 @@ impl AppPages {
 	
 	pub fn overlay<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
 		match self {
+			AppPages::Alchemy => self.alch_overlay_view(state),
 			AppPages::Calculator => self.calc_overlay_view(state),
 			_ => self._other_overlay_view(),
 		}

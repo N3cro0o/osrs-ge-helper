@@ -1,5 +1,5 @@
-use iced::{Element, Center};
-use iced::widget::{button, column, row, text, center, space, container, table, scrollable};
+use iced::{Element, Center, Length};
+use iced::widget::{button, column, row, text, center, space, container, table, scrollable, text_input, checkbox};
 
 use crate::{Message, MainLayout};
 use crate::{APP_PADDING, APP_SPACING, ALCHEMY_VEC_SIZE};
@@ -7,7 +7,6 @@ use crate::structs;
 
 impl structs::AppPages {
 	pub fn alch_sidebar_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
-		//state.best_items_alchemy
 		let mut data_vec: Vec<Element<'_, Message>> = vec![];
 		for data in state.fav_items_alchemy.iter(){
 			let diff = match state.best_items_alchemy.iter().find(|item| data.id == item.0) {
@@ -120,11 +119,10 @@ impl structs::AppPages {
 						start_offset
 					}
 				};
-				crate::log_mess!("Offsets [{start_offset} - {})", ALCHEMY_VEC_SIZE + end_offset);
 				table(columns, &state.best_items_alchemy[0 + start_offset..ALCHEMY_VEC_SIZE + end_offset])
 			}
 			else {
-				crate::log_mess!("ERROR. No alchemy data");
+				crate::log_err!("No alchemy data");
 				table(columns, &state.best_items_alchemy)
 			}
 		};
@@ -132,7 +130,7 @@ impl structs::AppPages {
 			button("Previous")
 				.on_press(Message::AlchemyDecreaseOffset),
 			button("Filters")
-				.on_press(Message::Nothing),
+				.on_press(Message::ShowPopup),
 			button("Next")
 				.on_press(Message::AlchemyIncreaseOffset),
 			]
@@ -148,5 +146,60 @@ impl structs::AppPages {
 			.padding(APP_PADDING)
 			.style(container::rounded_box);
 		main.into()
+	}
+	
+	pub fn alch_overlay_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
+		use iced::Theme;
+
+		let body = column![
+				space::vertical(),
+				text("Alchemy Filters"),
+				space::vertical().height(Length::Fixed(20.0)),
+				checkbox(state.extra_bool)
+					.on_toggle(Message::AlchemyHideLossyItems)
+					.label("Hide non-profitable items"),
+				checkbox(state.extra_bool_1)
+					.on_toggle(Message::AlchemyHideMembersItems)
+					.label("Hide non-members items"),
+				text("Price range"),
+				row![
+						text_input("Maximum", &state.extra_string)
+								.on_input(Message::AlchemyChangeMaximumPrice)
+								.align_x(Center),
+						text_input("Minimum", &state.extra_string_1)
+								.on_input(Message::AlchemyChangeMinimumPrice)
+								.align_x(Center),
+					]
+					.spacing(APP_SPACING)
+					.padding(APP_PADDING),
+				text("Volume range"),
+				row![
+						text_input("Maximum", &state.extra_string_2)
+								.on_input(Message::AlchemyChangeMaximumVolume)
+								.align_x(Center),
+						text_input("Minimum", &state.extra_string_3)
+								.on_input(Message::AlchemyChangeMinimumVolume)
+								.align_x(Center),
+					]
+					.spacing(APP_SPACING)
+					.padding(APP_PADDING),
+				space::vertical(),
+			]
+			.align_x(Center)
+			.padding(APP_PADDING)
+			.spacing(APP_SPACING);
+		
+		center(body)
+			.style(|theme: &Theme| {
+				let palette = theme.palette();
+				let mut style = container::rounded_box(theme);
+				style = style.border(iced::border::color(palette.background)
+						.rounded(iced::border::Radius::new(5.0))
+						.width(5));
+				style
+			})
+			.height(Length::Fixed(350.0))
+			.width(Length::Fixed(750.0))
+			.into()
 	}
 }

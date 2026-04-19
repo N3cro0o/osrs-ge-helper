@@ -386,12 +386,16 @@ impl structs::AppPages {
 			
 		
 		center(column![
+					space::vertical(),
 					text(format!("{} - {} = {} gp",
 						product_price.unwrap_or(0).to_formatted_string(&Locale::en), 
 						resource_price.unwrap_or(0).to_formatted_string(&Locale::en), 
 						profit_price.unwrap_or(0).to_formatted_string(&Locale::en))),
+					space::vertical(),
 					multis,
-				].align_x(Center))
+				]
+				.align_x(Center)
+				.padding(APP_PADDING))
 			.style(container::rounded_box).into()
 	}
 	
