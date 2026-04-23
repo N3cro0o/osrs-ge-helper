@@ -1,9 +1,29 @@
 use std::io::{self, Error, ErrorKind, Write, Read};
 use std::{path, fs};
+use serde::{Serialize, Deserialize};
 
 use crate::structs::RecipeHolder;
+use crate::osrs;
+
 use super::{check_dir, create_dir};
-use super::{DATA_DIR, RECIPES_DIR};
+use super::{DATA_DIR, RECIPES_DIR, FAVDATA_DIR, ITEM_FILE, ALCH_FILE};
+
+#[derive(Serialize, Deserialize)]
+struct Wrapper<T: std::clone::Clone> {
+	data: Vec<T>,
+}
+
+impl<T: std::clone::Clone> Wrapper<T> {
+	pub fn from(data: &Vec<T>) -> Self {
+		Wrapper {
+			data: data.to_vec()
+		}
+	}
+	
+	pub fn return_data(&self) -> Vec<T> {
+		self.data.clone()
+	}
+}
 
 pub fn save_recipe(data: &RecipeHolder) -> io::Result<()> {
 	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
@@ -24,6 +44,46 @@ pub fn save_recipe(data: &RecipeHolder) -> io::Result<()> {
 	Ok(())
 }
 
+pub fn save_view_items(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
+	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
+	let mut path = path::PathBuf::from(path);
+	path.push(DATA_DIR);
+	path.push(FAVDATA_DIR);
+	if !check_dir(&path) {
+		create_dir(&path)?;
+	}
+	path.push(ITEM_FILE);
+	let file = fs::OpenOptions::new().write(true).truncate(true).create(true).open(&path)?;
+	let mut stream = io::BufWriter::new(file);
+	let wrapper = Wrapper::from(data);
+	let xml_data = match serde_xml_rs::to_string(&wrapper) {
+		Ok(string) => string,
+		Err(err) => return Err(Error::new(ErrorKind::Other, err)),
+	};
+	stream.write(xml_data.as_bytes())?;
+	Ok(())
+}
+
+pub fn save_alchemy(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
+	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
+	let mut path = path::PathBuf::from(path);
+	path.push(DATA_DIR);
+	path.push(FAVDATA_DIR);
+	if !check_dir(&path) {
+		create_dir(&path)?;
+	}
+	path.push(ALCH_FILE);
+	let file = fs::OpenOptions::new().write(true).truncate(true).create(true).open(&path)?;
+	let mut stream = io::BufWriter::new(file);
+	let wrapper = Wrapper::from(data);
+	let xml_data = match serde_xml_rs::to_string(&wrapper) {
+		Ok(string) => string,
+		Err(err) => return Err(Error::new(ErrorKind::Other, err)),
+	};
+	stream.write(xml_data.as_bytes())?;
+	Ok(())
+}
+
 pub fn load_recipes_vec() -> io::Result<Vec<String>> {
 	let mut vec = vec![];
 	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
@@ -31,27 +91,10 @@ pub fn load_recipes_vec() -> io::Result<Vec<String>> {
 	path.push(DATA_DIR);
 	path.push(RECIPES_DIR);
 	if !check_dir(&path) {
-		create_dir(&path)?;
+		return Err(Error::new(ErrorKind::Other, "Recipes path doesn't exist"));
 	}
 	for entry in fs::read_dir(&path)? {
 		let entry = entry?;
-		// let val = match entry.file_name().into_string() {
-			// Ok(string) => {
-				// let str_offset = string.find('-').unwrap_or(string.len());
-				// let val = match string[..str_offset].parse::<usize>() {
-					// Ok(i) => i,
-					// Err(err) => {
-						// eprintln!("Cannot parse String to usize {err}...continuing");
-						// continue;
-					// }
-				// };
-				// val
-			// }
-			// Err(_) => {
-				// eprintln!("Cannot parse OsStrint to String... continuing");
-				// continue;
-			// }
-		// };
 		let val = match entry.file_name().into_string() {
 			Ok(mut string) => {
 				string = string.replace('-', " ");
@@ -66,6 +109,44 @@ pub fn load_recipes_vec() -> io::Result<Vec<String>> {
 		vec.push(val);
 	}
 	Ok(vec)
+}
+
+pub fn load_view_items() -> io::Result<Vec<osrs::DataHolder>> {
+	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
+	let mut path = path::PathBuf::from(path);
+	path.push(DATA_DIR);
+	path.push(FAVDATA_DIR);
+	if !check_dir(&path) {
+		return Err(Error::new(ErrorKind::Other, "ItemView saved items path doesn't exist"));
+	}
+	path.push(ITEM_FILE);
+	let mut file = fs::OpenOptions::new().read(true).open(&path)?;
+	let mut wrapper_str = String::new();
+	let _ = file.read_to_string(&mut wrapper_str)?;
+	let wrapper: Wrapper<osrs::DataHolder> = match serde_xml_rs::from_str(&wrapper_str) {
+		Ok(d) => d,
+		Err(err) => return Err(Error::new(ErrorKind::Other, format!("Cannot deserialize Wrapper struct for ItemView data. {err}"))),
+	};
+	Ok(wrapper.return_data())
+}
+
+pub fn load_alchemy() -> io::Result<Vec<osrs::DataHolder>> {
+	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
+	let mut path = path::PathBuf::from(path);
+	path.push(DATA_DIR);
+	path.push(FAVDATA_DIR);
+	if !check_dir(&path) {
+		return Err(Error::new(ErrorKind::Other, "Alchemy saved items path doesn't exist"));
+	}
+	path.push(ALCH_FILE);
+	let mut file = fs::OpenOptions::new().read(true).open(&path)?;
+	let mut wrapper_str = String::new();
+	let _ = file.read_to_string(&mut wrapper_str)?;
+	let wrapper: Wrapper<osrs::DataHolder> = match serde_xml_rs::from_str(&wrapper_str) {
+		Ok(d) => d,
+		Err(err) => return Err(Error::new(ErrorKind::Other, format!("Cannot deserialize Wrapper struct for Alchemy data. {err}"))),
+	};
+	Ok(wrapper.return_data())
 }
 
 pub fn load_recipe(id: usize) -> io::Result<RecipeHolder> {

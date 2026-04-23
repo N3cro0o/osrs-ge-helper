@@ -1,5 +1,5 @@
 use iced::{Element, Center, Length};
-use iced::widget::{button, column, row, text, center, space, container, combo_box, text_input, text_editor};
+use iced::widget::{button, column, row, text, center, space, container, combo_box, text_input, text_editor, table};
 use iced::alignment::Horizontal;
 
 use num_format::{Locale, ToFormattedString};
@@ -130,7 +130,7 @@ impl structs::AppPages {
 					container(self.calc_body(state, holder))
 						.width(Length::FillPortion(2)),
 					column![
-							self.price_body(state, holder),
+							self.price_body(state, holder, state.calc_price_multi),
 							self.desc_body(state, holder),
 						]
 						.width(Length::Fill)
@@ -213,30 +213,24 @@ impl structs::AppPages {
 		let resources_panel: Element<'a, Message>;
 		let products_panel: Element<'a, Message>;
 		// RESOURCES -------------------------
-		let add_button_resources = {
-			if let Some(item) = &state.last_item {
-				Some(
-					button("ADD")
-						.on_press(Message::CalcAddResource(item.id))
-					)
-			}
-			else { None }
-		};
-		let remove_button_resources = {
-			if let Some(item) = &state.last_item {
-				Some(
-					button("REMOVE")
-						.on_press(Message::CalcRemoveResource(item.id))
-					)
-			}
-			else { None }
-		};
-		let resources_panel_top = row![
-				add_button_resources,
-				remove_button_resources,
-			]
-			.padding(APP_PADDING)
-			.spacing(APP_SPACING);
+		let add_button_resources = button("ADD")
+			.on_press_maybe(
+				if let Some(item) = &state.last_item {
+					Some(Message::CalcAddResource(item.id))	
+				}
+				else {
+					None
+				});
+		let remove_button_resources = button("REMOVE")
+			.on_press_maybe(
+				if let Some(item) = &state.last_item {
+					Some(Message::CalcRemoveResource(item.id))	
+				}
+				else {
+					None
+				});
+		let clear_button_resource = button("CLEAR")
+			.on_press(Message::CalcClearResource);
 		let mut data_vec: Vec<Element<'_, Message>> = vec![];
 		for data in holder.resources_iter(){
 			let item = match state.get_item_by_id(data.0) {
@@ -254,21 +248,20 @@ impl structs::AppPages {
 			.spacing(APP_SPACING);
 		let resource_info_panel = container(
 				row![
-						text("TESAT"),
+						space::horizontal(),
+						add_button_resources,
+						remove_button_resources,
+						clear_button_resource,
 						space::horizontal(),
 					]
 					.padding(APP_PADDING)
+					.spacing(APP_SPACING)
 			)
 			.height(75)
 			.align_y(Center)
 			.style(container::rounded_box);
 		resources_panel = column![
-				center(
-					column![
-							resources_panel_top,
-							center(resource_column),
-						]
-					)
+				center(resource_column)
 					.padding(APP_PADDING)
 					.style(container::rounded_box),
 				resource_info_panel,
@@ -276,30 +269,25 @@ impl structs::AppPages {
 			.spacing(APP_SPACING)
 			.into();
 		// PRODUCTS -------------------------
-		let add_button_products = {
-			if let Some(item) = &state.last_item {
-				Some(
-					button("ADD")
-						.on_press(Message::CalcAddProduct(item.id))
-					)
-			}
-			else { None }
-		};
-		let remove_button_products = {
-			if let Some(item) = &state.last_item {
-				Some(
-					button("REMOVE")
-						.on_press(Message::CalcRemoveProduct(item.id))
-					)
-			}
-			else { None }
-		};
-		let products_panel_top = row![
-				add_button_products,
-				remove_button_products,
-			]
-			.padding(APP_PADDING)
-			.spacing(APP_SPACING);
+		let add_button_products = button("ADD")
+			.on_press_maybe(
+				if let Some(item) = &state.last_item {
+					Some(Message::CalcAddProduct(item.id))	
+				}
+				else {
+					None
+				});
+		let remove_button_products = button("REMOVE")
+			.on_press_maybe(
+				if let Some(item) = &state.last_item {
+					Some(Message::CalcRemoveProduct(item.id))	
+				}
+				else {
+					None
+				});		
+		let clear_button_products = button("CLEAR")
+			.on_press(Message::CalcClearProduct);
+			
 		data_vec = vec![];
 		for data in holder.products_iter(){
 			let item = match state.get_item_by_id(data.0) {
@@ -317,22 +305,20 @@ impl structs::AppPages {
 			.spacing(APP_SPACING);
 		let product_info_panel = container(
 				row![
-						text("TESAT"),
 						space::horizontal(),
-						button("config")
-							.on_press(Message::ChangePage(structs::AppPages::Config)),
+						add_button_products,
+						remove_button_products,
+						clear_button_products,
+						space::horizontal(),
 					]
+					.padding(APP_PADDING)
+					.spacing(APP_SPACING)
 			)
 			.height(75)
 			.align_y(Center)
 			.style(container::rounded_box);
 		products_panel = column![
-			center(
-					column![
-							products_panel_top,
-							center(product_column),
-						]
-					)
+				center(product_column)
 					.padding(APP_PADDING)
 					.style(container::rounded_box),
 				product_info_panel,
@@ -351,30 +337,32 @@ impl structs::AppPages {
 	fn price_body<'a>
 		(&'a self, 
 		state: &'a MainLayout, 
-		holder: &structs::RecipeHolder) -> Element<'a, Message> 
+		holder: &structs::RecipeHolder,
+		multi: usize) -> Element<'a, Message>
 	{
-		let resource_price = {
-			if !holder.is_resources_empty() {
-				Some(holder.resc_cost)
-			}
-			else {
-				None
-			}
+		let outcome_table = {
+			let columns = [
+				table::column("", |data: (&str, Option<isize>, Option<usize>)| text(data.0)).align_x(Center),
+				table::column("Coins", |data: (&str, Option<isize>, Option<usize>)| {
+						if let Some(num) = data.1 {
+							text(format!("{} gp", num.to_formatted_string(&Locale::en)))
+						}
+						else {
+							text("")
+						}
+					}).width(Length::FillPortion(2)).align_x(Center),
+				table::column("Items", |data: (&str, Option<isize>, Option<usize>)| {
+						if let Some(num) = data.2 {
+							text((num * multi).to_formatted_string(&Locale::en))
+						}
+						else {
+							text("")
+						}
+					}).width(Length::FillPortion(1)).align_x(Center),
+				];
+			table(columns, holder.table_data()).separator_x(0)
 		};
-		let product_price = {
-			if !holder.is_products_empty() {
-				Some(holder.prod_cost)
-			}
-			else {
-				None
-			}
-		};
-		let profit_price = {
-			if resource_price.is_some() && product_price.is_some(){
-				Some(holder.reci_cost)
-			}
-			else { None }
-		};
+		
 		let multis = row![
 				space::horizontal().width(Length::FillPortion(2)),
 				text_input("Input number of repeat operations", &format!("{}", state.calc_price_multi))
@@ -387,10 +375,7 @@ impl structs::AppPages {
 		
 		center(column![
 					space::vertical(),
-					text(format!("{} - {} = {} gp",
-						product_price.unwrap_or(0).to_formatted_string(&Locale::en), 
-						resource_price.unwrap_or(0).to_formatted_string(&Locale::en), 
-						profit_price.unwrap_or(0).to_formatted_string(&Locale::en))),
+					container(outcome_table).padding(APP_PADDING),
 					space::vertical(),
 					multis,
 				]
@@ -406,7 +391,7 @@ impl structs::AppPages {
 	{
 		center(
 			text_editor(&state.calc_description)
-				.placeholder("Notes...")
+				.placeholder("You can write notes here...")
 				.on_action(Message::CalcChangeItemDesc)
 				.padding(APP_PADDING)
 				.height(Length::Fill)

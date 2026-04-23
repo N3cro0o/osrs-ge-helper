@@ -13,7 +13,8 @@ macro_rules! log_mess {
 	($mesg:expr) => {
 		{
 			use crate::files::log_message_str;
-			let _ = log_message_str(format!("{} {}:{} - {}",
+			let _ = log_message_str(format!("{} | {} {}:{} - {}",
+				chrono::Local::now().format("%d.%m.%Y %H:%M:%S:%6f"),
 				std::file![], 
 				std::line![], 
 				std::column![], 
@@ -24,7 +25,8 @@ macro_rules! log_mess {
 	($fmt:expr, $mesg:expr) => {
 		{
 			use crate::files::log_message_str;
-			let _ = log_message_str(format!("{} {}:{} - {}",
+			let _ = log_message_str(format!("{} | {} {}:{} - {}",
+				chrono::Local::now().format("%d.%m.%Y %H:%M:%S:%6f"),
 				std::file![], 
 				std::line![], 
 				std::column![], 
@@ -38,7 +40,8 @@ macro_rules! log_err {
 	($mesg:expr) => {
 		{
 			use crate::files::log_error_str;
-			let _ = log_error_str(format!("{} {}:{} - {}",
+			let _ = log_error_str(format!("{} | {} {}:{} - {}",
+				chrono::Local::now().format("%d.%m.%Y %H:%M:%S:%6f"),
 				std::file![], 
 				std::line![], 
 				std::column![], 
@@ -49,7 +52,8 @@ macro_rules! log_err {
 	($fmt:expr, $mesg:expr) => {
 		{
 			use crate::files::log_error_str;
-			let _ = log_error_str(format!("{} {}:{} - {}",
+			let _ = log_error_str(format!("{} | {} {}:{} - {}",
+				chrono::Local::now().format("%d.%m.%Y %H:%M:%S:%6f"),
 				std::file![], 
 				std::line![], 
 				std::column![], 

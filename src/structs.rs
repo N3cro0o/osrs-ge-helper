@@ -29,6 +29,7 @@ pub struct SearchFilter {
 	pub minimum_volume: usize,
 	pub maximum_volume: usize,
 	pub hide_loss_alch: bool,
+	pub only_selected: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -210,6 +211,7 @@ impl SearchFilter {
 			minimum_volume: 1,
 			maximum_volume: usize::MAX,
 			hide_loss_alch: false,
+			only_selected: false,
 		}
 	}
 	
@@ -232,6 +234,11 @@ impl SearchFilter {
 		self.only_non_member_items = val;
 		self.clone()
 	}
+		
+	pub fn change_selected_only(&mut self, val: bool) -> Self {
+		self.only_selected = val;
+		self.clone()
+	}
 	
 	pub fn change_min_price(&mut self, val: usize) -> &mut Self {
 		self.minimum_price = val;
@@ -242,6 +249,7 @@ impl SearchFilter {
 		self.minimum_volume = val;
 		self
 	}	
+	
 	pub fn change_max_price(&mut self, val: usize) -> &mut Self {
 		self.maximum_price = val;
 		self
@@ -389,6 +397,10 @@ impl RecipeHolder {
 		}
 	}
 	
+	pub fn clear_product(&mut self) {
+		self.calc_curr_products.clear();
+	}
+	
 	pub fn remove_one_from_products(&mut self, pos: usize) {
 		if self.calc_curr_products[pos].1 > 1 {
 			self.calc_curr_products[pos].1 -= 1;
@@ -398,6 +410,10 @@ impl RecipeHolder {
 		}
 	}
 	
+	pub fn clear_resource(&mut self) {
+		self.calc_curr_resources.clear();
+	}
+	
 	pub fn remove_one_from_resources(&mut self, pos: usize) {
 		if self.calc_curr_resources[pos].1 > 1 {
 			self.calc_curr_resources[pos].1 -= 1;
@@ -405,6 +421,16 @@ impl RecipeHolder {
 		else {
 			self.calc_curr_resources.remove(pos);
 		}
+	}
+	
+	pub fn table_data(&self) -> Vec<(&'static str, Option<isize>, Option<usize>)> {
+		vec![
+				("Resources", Some(self.resc_cost), Some(self.calc_curr_resources.len())),
+				("Products", Some(self.prod_cost), Some(self.calc_curr_products.len())),
+				("Outcome", if !self.calc_curr_products.is_empty() && !self.calc_curr_resources.is_empty() { 
+					Some(self.reci_cost)} else { None }, 
+				None),
+			]
 	}
 }
 

@@ -10,9 +10,9 @@ use num_format::{Locale, ToFormattedString};
 use reqwest::header::USER_AGENT;
 use reqwest::blocking::{Client, Response};
 
-mod osrs;
-mod structs;
-mod files;
+pub mod osrs;
+pub mod structs;
+pub mod files;
 
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot};
 
@@ -25,7 +25,6 @@ pub const ALCHEMY_DAILY_VOLUME_LIMIT: usize = 100;
 pub const ALCHEMY_VEC_SIZE: usize = 12;
 
 pub struct MainLayout {
-	start_time: Instant,
 	plotter: ItemViewPlot,
 	
     pub _debug_value: bool,
@@ -62,6 +61,7 @@ pub struct MainLayout {
 	pub extra_string_3: String, // Alch => min volume temp value,
 	pub extra_bool: bool, // In Calc => delete mode, Alch => hide lossy items
 	pub extra_bool_1: bool, // In Alch => hide non-members items
+	pub extra_bool_2: bool, // In Alch => show only favourites
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -89,6 +89,7 @@ pub enum Message {
 	AlchemyChangeMaximumVolume(String),
 	AlchemyHideLossyItems(bool),
 	AlchemyHideMembersItems(bool),
+	AlchemyShowFavourites(bool),
 	
 	CalcAddResource(usize),
 	CalcRemoveResource(usize),
@@ -102,6 +103,8 @@ pub enum Message {
 	CalcDisableDelMode,
 	CalcChangeItemDesc(text_editor::Action),
 	CalcChangePriceMultiplier(String),
+	CalcClearResource,
+	CalcClearProduct,
 	
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
@@ -118,9 +121,22 @@ impl MainLayout {
 				vec![]
 			}
 		};
+		let vec_item_view = match files::load_view_items () {
+			Ok(v) => v,
+			Err(err) => {
+				log_err!("Cannot get ItemView data. {}", err.to_string());
+				vec![]
+			}
+		};		
+		let vec_alch = match files::load_alchemy () {
+			Ok(v) => v,
+			Err(err) => {
+				log_err!("Cannot get Alchemy data. {}", err.to_string());
+				vec![]
+			}
+		};
 		let theme = Some(Theme::CatppuccinFrappe);
 		let mut layout = MainLayout {
-			start_time: Instant::now(),
 			plotter: ItemViewPlot::default(),
 			
 			_debug_value: false,
@@ -136,12 +152,12 @@ impl MainLayout {
 			current_page: AppPages::ItemView,
 			popup_ready: false,
 			
-			saved_items_item_view: vec![],
+			saved_items_item_view: vec_item_view,
 			combo_current_filter_item_view: None,
 			selected_item_timeseries_data: None,
 			selected_timeseries: osrs::Timeseries::FiveMin,
 			
-			fav_items_alchemy: vec![],
+			fav_items_alchemy: vec_alch,
 			search_filter_alchemy: Some(SearchFilter::default()),
 			best_items_alchemy: vec![],
 			table_vec_offset: 0,
@@ -157,6 +173,7 @@ impl MainLayout {
 			extra_string_3: String::new(),
 			extra_bool: false,
 			extra_bool_1: false,
+			extra_bool_2: false,
 		};
 		layout.update(Message::RefreshData);
 		log_mess!("{:#?}", &layout.calc_saved_recipes);
@@ -302,10 +319,16 @@ impl MainLayout {
 			
 			Message::AddItemToSaved => {
 				let _ = self.save_current_item();
+				if let Err(err) = files::save_view_items(&self.saved_items_item_view) {
+					log_err!("{}", err);
+				}
 			}	
 
 			Message::AlchemyAddToFav(item) => {
 				let _ = self.alch_save_current_item(item);
+				if let Err(err) = files::save_alchemy(&self.fav_items_alchemy) {
+					log_err!("{}", err);
+				}
 			}
 			
 			Message::OpenWiki => {
@@ -342,8 +365,8 @@ impl MainLayout {
 				self.calculate_best_alchemy();
 			}
 			
-			Message::RefreshTick(now) => {
-				log_mess!("Auto-refresh data from OSRS wiki at {}s ...", now.duration_since(self.start_time).as_secs_f32());
+			Message::RefreshTick(_now) => {
+				log_mess!("Auto-refresh data from OSRS wiki ...");
 				match self.refresh_data() {
 					Ok(size) => log_mess!("Done. Found {} items", size),
 					Err(err) => log_err!("{}", err),
@@ -472,6 +495,16 @@ impl MainLayout {
 				};
 			}
 			
+			Message::AlchemyShowFavourites(b) => {
+				self.search_filter_alchemy = match &self.search_filter_alchemy {
+					Some(filter) => { 
+						self.extra_bool_2 = b;
+						Some(filter.clone().change_selected_only(b))
+					}
+					None => None,
+				};
+			}
+			
 			Message::AlchemyCheckItem(item) => {
 				self.update_page(AppPages::ItemView);
 				self.select_new_item(&item);
@@ -483,6 +516,7 @@ impl MainLayout {
 					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
 						holder.add_one_to_resources(item_id);
 					}
+					self.recalculate_recipe_prices();
 					self.update(Message::HidePopup);
 				}
 			}
@@ -498,11 +532,12 @@ impl MainLayout {
 						
 			Message::CalcRemoveResource(item_id) => {
 				if let Some(_item) = self.get_item_by_id(item_id) {
-					if let CurrentRecipe::Loaded( holder) = &mut self.calc_curr_recipe {
+					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
 						if let Some(pos) = holder.resources_iter().position(|data_tuple| item_id == data_tuple.id()) { // check if exists
 							holder.remove_one_from_resources(pos);
 						}
 					}
+					self.recalculate_recipe_prices();
 					self.update(Message::HidePopup);
 				}
 			}
@@ -514,7 +549,22 @@ impl MainLayout {
 							holder.remove_one_from_products(pos);
 						}
 					}
+					self.recalculate_recipe_prices();
 					self.update(Message::HidePopup);
+				}
+			}
+			
+			Message::CalcClearResource => {
+				if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
+					holder.clear_resource();
+					self.recalculate_recipe_prices();
+				}
+			}
+			
+			Message::CalcClearProduct => {
+				if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
+					holder.clear_product();
+					self.recalculate_recipe_prices();
 				}
 			}
 			
@@ -694,8 +744,8 @@ impl MainLayout {
 	fn extra_stuff_to_do_once_popup_closes(&mut self) {
 		match self.current_page {
 			AppPages::Alchemy => {
-				self.calculate_best_alchemy();
 				self.table_vec_offset = 0;
+				self.calculate_best_alchemy();
 			}
 			
 			_ => {
@@ -780,6 +830,7 @@ impl MainLayout {
 			return;
 		}
 		output.sort_by(|a, b| b.1.cmp(&a.1));
+		log_mess!("Alchemy sorting done.");
 		self.best_items_alchemy = output;
 	}
 	
@@ -799,7 +850,7 @@ impl MainLayout {
 				Some(data) => data,
 				None => continue,
 			};
-			if item.check_filter(filter, value, volume) {
+			if item.check_filter(filter, value, volume, &self.fav_items_alchemy) {
 				new_vec.push(item.clone());
 			}
 		}
@@ -966,6 +1017,18 @@ impl MainLayout {
 		response
 	}
 	
+pub fn get_alch_fav_vec(&self) -> Vec<String> {
+	let mut data_vec: Vec<String> = vec![];
+	for data in self.fav_items_alchemy.iter(){
+		let diff = match self.best_items_alchemy.iter().find(|item| data.id == item.0) {
+			Some(item) => item.1,
+			None => 0,
+		};
+		data_vec.push(format!("{}: {diff} gp", data.name()));
+	}
+	data_vec
+}
+	
 	fn theme(&self) -> Option<Theme> {
 		self.theme.clone()
 	}
@@ -978,6 +1041,7 @@ impl Default for MainLayout {
 }
 
 fn main() -> iced::Result<> {
+	unsafe {std::env::set_var("RUST_BACKTRACE", "0");}
 	if let Err(err) = files::setup_logger() { return Err(iced::Error::ExecutorCreationFailed(err)) }; // Good enough for now, I believe more Errors should be added to iced::Error 
 	log_mess!["INIT APP"];
 	
@@ -993,5 +1057,6 @@ fn main() -> iced::Result<> {
 		.subscription(MainLayout::subscription)
 		.title(MainLayout::title);
 	let r = app.run();
+	log_mess!("APP CLOSE");
 	r
 }

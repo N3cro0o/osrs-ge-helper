@@ -7,21 +7,17 @@ use crate::structs;
 
 impl structs::AppPages {
 	pub fn alch_sidebar_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
-		let mut data_vec: Vec<Element<'_, Message>> = vec![];
-		for data in state.fav_items_alchemy.iter(){
-			let diff = match state.best_items_alchemy.iter().find(|item| data.id == item.0) {
-				Some(item) => item.1,
-				None => 0,
-			};
-			data_vec.push(text(format!("{}: {diff} gp", data.name())).into());
-		}
-		let data_column = iced::widget::Column::from_vec(data_vec)
-			.spacing(APP_SPACING);
+		let data_table = {
+			let columns = [
+					table::column(text("JP2GMD").size(0.001), |fav_data: String| text(fav_data))
+				];
+			table(columns, state.get_alch_fav_vec())
+		};
 		
 		let sidebar = container(
 				column![
 						text("Favourites:").size(22),
-						data_column,
+						data_table,
 						space::vertical()
 					]
 					.spacing(APP_SPACING)
@@ -113,13 +109,13 @@ impl structs::AppPages {
 				let start_offset = (ALCHEMY_VEC_SIZE * state.table_vec_offset) as usize;
 				let end_offset = {
 					if ALCHEMY_VEC_SIZE + start_offset > state.best_items_alchemy.len() {
-						state.best_items_alchemy.len() - ALCHEMY_VEC_SIZE
+						state.best_items_alchemy.len()
 					}
 					else {
-						start_offset
+						start_offset + ALCHEMY_VEC_SIZE
 					}
 				};
-				table(columns, &state.best_items_alchemy[0 + start_offset..ALCHEMY_VEC_SIZE + end_offset])
+				table(columns, &state.best_items_alchemy[0 + start_offset.. end_offset])
 			}
 			else {
 				crate::log_err!("No alchemy data");
@@ -138,8 +134,11 @@ impl structs::AppPages {
 			.spacing(APP_SPACING);
 		let main = center(
 			column![
+					space::vertical(),
 					scrollable(table),
-					table_buttons
+					space::vertical(),
+					table_buttons,
+					space::vertical().height(Length::Fixed(20.0)),
 				]
 				.align_x(Center)
 			)
@@ -161,6 +160,9 @@ impl structs::AppPages {
 				checkbox(state.extra_bool_1)
 					.on_toggle(Message::AlchemyHideMembersItems)
 					.label("Hide non-members items"),
+				checkbox(state.extra_bool_2)
+					.on_toggle(Message::AlchemyShowFavourites)
+					.label("Show only favourites"),
 				text("Price range"),
 				row![
 						text_input("Maximum", &state.extra_string)

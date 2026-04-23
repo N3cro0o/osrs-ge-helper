@@ -103,7 +103,7 @@ impl DataHolder {
 		tuple
 	}
 	
-	pub fn check_filter(&self, filter: &Option<structs::SearchFilter>, price: usize, volume: usize) -> bool {
+	pub fn check_filter(&self, filter: &Option<structs::SearchFilter>, price: usize, volume: usize, list: &Vec<Self>) -> bool {
 		if let Some(f) = filter {
 			if f.only_non_member_items && self.members {
 				return false;
@@ -115,6 +115,9 @@ impl DataHolder {
 				return false;
 			}
 			if volume < f.minimum_volume || volume > f.maximum_volume {
+				return false;
+			}
+			if let None = list.iter().position(|item| self == item) && f.only_selected {
 				return false;
 			}
 			true
