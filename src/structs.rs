@@ -83,6 +83,21 @@ pub struct ItemViewPlot {
 	data_series: Option<osrs::TimeseriesData>,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum ConfigPages {
+	AppSettings,
+	WindowSettings,
+	PingSettings,
+	Customization,
+	Credits, 
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ConfigSettings {
+	resolution: (f32, f32),
+	resize: bool,
+}
+
 impl ItemViewPlot {
 	pub fn view(&self) -> Element<'_, Message> {
 		let chart = ChartWidget::new(self)
@@ -465,5 +480,20 @@ impl RecipeElement {
 impl Default for RecipePages {
 	fn default() -> Self {
 		Self::CalculatorPage
+	}
+}
+
+impl ConfigSettings {
+	pub fn new() -> Self {
+		ConfigSettings {
+			resolution: (1280.0,720.0),
+			resize: false,
+		}
+	}
+}
+
+impl Default for ConfigSettings {
+	fn default() -> Self {
+		ConfigSettings::new()
 	}
 }

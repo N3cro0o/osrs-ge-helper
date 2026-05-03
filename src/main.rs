@@ -1,6 +1,6 @@
-#[cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![windows_subsystem = "windows"]
 
-use iced::{Element, Center, Size, Pixels, Theme, Subscription};
+use iced::{Element, Center, Size, Pixels, Theme, Subscription, Task};
 use iced::widget::{button, column, row, text, space, container, combo_box, stack, center};
 use iced::widget::text_editor::{self, Content};
 use iced::time::{self, Instant, seconds};
@@ -10,11 +10,14 @@ use num_format::{Locale, ToFormattedString};
 use reqwest::header::USER_AGENT;
 use reqwest::blocking::{Client, Response};
 
+pub mod message;
 pub mod osrs;
 pub mod structs;
 pub mod files;
 
+use message::Message;
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot};
+use structs::{ConfigPages, ConfigSettings};
 
 pub const BOND_ID: usize = 13190;
 pub const USER_AGENT_MESSAGE: &str = "N3cro0oDev (discord: necro0o) - GE Price Calc Prototype";
@@ -55,6 +58,9 @@ pub struct MainLayout {
 	pub calc_description: Content,
 	pub calc_price_multi: usize,
 	
+	pub config_curr_page: ConfigPages,
+	pub config_settings: ConfigSettings,
+	
 	pub extra_string: String, // In Calc => recipe label, Alch => max price temp value,
 	pub extra_string_1: String, // Alch => min price temp value,
 	pub extra_string_2: String, // Alch => max volume temp value,
@@ -62,54 +68,6 @@ pub struct MainLayout {
 	pub extra_bool: bool, // In Calc => delete mode, Alch => hide lossy items
 	pub extra_bool_1: bool, // In Alch => hide non-members items
 	pub extra_bool_2: bool, // In Alch => show only favourites
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Message {
-	Nothing,
-	CurrentTesat,
-	RefreshData,
-	AddItem(osrs::DataHolder),
-	SelectItem(osrs::DataHolder),
-	ChangePage(AppPages),
-	AddItemToSaved,
-	RemoveItemFromSaved,
-	ComboNewFilter(Option<SearchFilter>),
-	AlchNewFilter(Option<SearchFilter>),
-	OpenWiki,
-	RefreshTick(Instant),
-	
-	AlchemyIncreaseOffset,
-	AlchemyDecreaseOffset,
-	AlchemyCheckItem(osrs::DataHolder),
-	AlchemyAddToFav(osrs::DataHolder),
-	AlchemyChangeMinimumPrice(String),
-	AlchemyChangeMaximumPrice(String),
-	AlchemyChangeMinimumVolume(String),
-	AlchemyChangeMaximumVolume(String),
-	AlchemyHideLossyItems(bool),
-	AlchemyHideMembersItems(bool),
-	AlchemyShowFavourites(bool),
-	
-	CalcAddResource(usize),
-	CalcRemoveResource(usize),
-	CalcAddProduct(usize),
-	CalcRemoveProduct(usize),
-	CalcResetThis,
-	CalcAcceptRecipeName,
-	CalcSelectItem(usize),
-	CalcDeleteItem(usize),
-	CalcEnableDelMode,
-	CalcDisableDelMode,
-	CalcChangeItemDesc(text_editor::Action),
-	CalcChangePriceMultiplier(String),
-	CalcClearResource,
-	CalcClearProduct,
-	
-	ChangePlotterTimeseries(osrs::Timeseries),
-	ChangeExtraString(String),
-	ShowPopup,
-	HidePopup,
 }
 
 impl MainLayout {
@@ -167,6 +125,9 @@ impl MainLayout {
 			calc_description: Content::new(),
 			calc_price_multi: 1,
 			
+			config_curr_page: ConfigPages::AppSettings,
+			config_settings: ConfigSettings::default(),
+			
 			extra_string: String::new(),
 			extra_string_1: String::new(),
 			extra_string_2: String::new(),
@@ -175,7 +136,7 @@ impl MainLayout {
 			extra_bool_1: false,
 			extra_bool_2: false,
 		};
-		layout.update(Message::RefreshData);
+		let _ = layout.update(Message::RefreshData);
 		log_mess!("{:#?}", &layout.calc_saved_recipes);
 		layout
 	}
@@ -300,396 +261,8 @@ impl MainLayout {
 		}
 	}
 
-	pub fn update(&mut self, message: Message) {
-		match message {
-			Message::RefreshData => {
-				log_mess!("Get data from OSRS wiki...");
-				match self.refresh_data() {
-					Ok(size) => log_mess!("Done. Found {} items", size),
-					Err(err) => log_err!("{}", err),
-				};
-				self.bond_sell_price = self.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
-				self.create_combo_box_data();
-				self.calculate_best_alchemy();
-			}
-			
-			Message::AddItem(item) => {
-				self.select_new_item(&item);
-			}
-			
-			Message::AddItemToSaved => {
-				let _ = self.save_current_item();
-				if let Err(err) = files::save_view_items(&self.saved_items_item_view) {
-					log_err!("{}", err);
-				}
-			}	
-
-			Message::AlchemyAddToFav(item) => {
-				let _ = self.alch_save_current_item(item);
-				if let Err(err) = files::save_alchemy(&self.fav_items_alchemy) {
-					log_err!("{}", err);
-				}
-			}
-			
-			Message::OpenWiki => {
-				if let Some(item) = self.last_item.clone() {
-					if webbrowser::open(&format!("https://oldschool.runescape.wiki/w/{}", item.name)).is_err() {
-						log_mess!("Cannot open wiki");
-					}
-				}
-				else {
-					log_err!("No item found");
-				}
-			}
-			
-			Message::RemoveItemFromSaved => {
-				let _ = self.forget_current_item();
-			}
-			
-			Message::SelectItem(item) => {
-				self.select_new_item(&item);
-				let _ = self.get_timeseries_data(&item);
-			}
-			
-			Message::ChangePage(page) => {
-				self.update_page(page);
-			}
-			
-			Message::ComboNewFilter(filter) => {
-				self.combo_current_filter_item_view = filter;
-				self.create_combo_box_data();
-			}
-			
-			Message::AlchNewFilter(filter) => {
-				self.search_filter_alchemy = filter;
-				self.calculate_best_alchemy();
-			}
-			
-			Message::RefreshTick(_now) => {
-				log_mess!("Auto-refresh data from OSRS wiki ...");
-				match self.refresh_data() {
-					Ok(size) => log_mess!("Done. Found {} items", size),
-					Err(err) => log_err!("{}", err),
-				};
-				self.bond_sell_price = self.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
-				self.create_combo_box_data();
-				self.calculate_best_alchemy();
-			}
-			
-			Message::AlchemyDecreaseOffset => {
-				if self.table_vec_offset != 0 {
-					self.table_vec_offset -= 1;
-				}
-				self.update(Message::HidePopup);
-			}	
-			
-			Message::AlchemyIncreaseOffset => {
-				if (self.table_vec_offset + 1) * ALCHEMY_VEC_SIZE < self.best_items_alchemy.len() {
-					self.table_vec_offset += 1;
-				}
-				self.update(Message::HidePopup);
-			}
-			
-			Message::AlchemyChangeMinimumPrice(val) => {
-				let minimum = match val.clone().parse::<isize>() {
-					Ok(d) => d,
-					Err(err) => {
-						log_err!("{}", err.to_string());
-						return;
-					}
-				};
-				if minimum > 0 {
-					match &mut self.search_filter_alchemy {
-						Some(data) => {
-							if minimum as usize <= data.maximum_price {
-								let _ = data.change_min_price(minimum as usize);
-							}
-							self.extra_string_1 = val;
-						}
-						None => log_mess!("No alchemy filter present. continuing..."),
-					}
-				}
-			}
-			
-			Message::AlchemyChangeMaximumPrice(val) => {
-				let maximum = match val.clone().parse::<isize>() {
-					Ok(d) => d,
-					Err(err) => {
-						log_err!("{}", err.to_string());
-						return;
-					}
-				};
-				if maximum > 0 {
-					match &mut self.search_filter_alchemy {
-						Some(data) => { 
-							if maximum as usize >= data.minimum_price {
-								let _ = data.change_max_price(maximum as usize); 
-							}
-							self.extra_string = val;
-						}
-						None => log_mess!("No alchemy filter present. continuing..."),
-					}
-				}
-			}
-			
-			Message::AlchemyChangeMinimumVolume(val) => {
-				let minimum = match val.clone().parse::<isize>() {
-					Ok(d) => d,
-					Err(err) => {
-						log_err!("{}", err.to_string());
-						return;
-					}
-				};
-				if minimum > 0 {
-					match &mut self.search_filter_alchemy {
-						Some(data) => { 
-							if minimum as usize <= data.maximum_volume {
-								let _ = data.change_min_volume(minimum as usize); 
-							}
-							self.extra_string_3 = val;
-						}
-						
-						None => log_mess!("No alchemy filter present. continuing..."),
-					}
-				}
-			}
-			
-			Message::AlchemyChangeMaximumVolume(val) => {
-				let maximum = match val.clone().parse::<isize>() {
-					Ok(d) => d,
-					Err(err) => {
-						log_err!("{}", err.to_string());
-						return;
-					}
-				};
-				if maximum > 0 {
-					match &mut self.search_filter_alchemy {
-						Some(data) => { 
-							if data.minimum_volume <= maximum as usize {
-								let _ = data.change_max_volume(maximum as usize); 
-							}
-							self.extra_string_2 = val;
-						}
-						None => log_mess!("No alchemy filter present. continuing..."),
-					}
-				}
-			}
-			
-			Message::AlchemyHideLossyItems(b) => {
-				self.search_filter_alchemy = match &self.search_filter_alchemy {
-					Some(filter) => { 
-						self.extra_bool = b;
-						Some(filter.clone().change_lossy_items(b))
-					}
-					None => None,
-				};
-			}
-			
-			Message::AlchemyHideMembersItems(b) => {
-				self.search_filter_alchemy = match &self.search_filter_alchemy {
-					Some(filter) => { 
-						self.extra_bool_1 = b;
-						Some(filter.clone().change_members_items(b))
-					}
-					None => None,
-				};
-			}
-			
-			Message::AlchemyShowFavourites(b) => {
-				self.search_filter_alchemy = match &self.search_filter_alchemy {
-					Some(filter) => { 
-						self.extra_bool_2 = b;
-						Some(filter.clone().change_selected_only(b))
-					}
-					None => None,
-				};
-			}
-			
-			Message::AlchemyCheckItem(item) => {
-				self.update_page(AppPages::ItemView);
-				self.select_new_item(&item);
-				let _ = self.get_timeseries_data(&item);
-			}
-			
-			Message::CalcAddResource(item_id) => {
-				if let Some(_item) = self.get_item_by_id(item_id) {
-					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
-						holder.add_one_to_resources(item_id);
-					}
-					self.recalculate_recipe_prices();
-					self.update(Message::HidePopup);
-				}
-			}
-			Message::CalcAddProduct(item_id) => {
-				if let Some(_item) = self.get_item_by_id(item_id) {
-					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
-						holder.add_one_to_products(item_id);
-					}
-					self.recalculate_recipe_prices();
-					self.update(Message::HidePopup);
-				}
-			}
-						
-			Message::CalcRemoveResource(item_id) => {
-				if let Some(_item) = self.get_item_by_id(item_id) {
-					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
-						if let Some(pos) = holder.resources_iter().position(|data_tuple| item_id == data_tuple.id()) { // check if exists
-							holder.remove_one_from_resources(pos);
-						}
-					}
-					self.recalculate_recipe_prices();
-					self.update(Message::HidePopup);
-				}
-			}
-			
-			Message::CalcRemoveProduct(item_id) => {
-				if let Some(_item) = self.get_item_by_id(item_id) {
-					if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
-						if let Some(pos) = holder.products_iter().position(|data_tuple| item_id == data_tuple.id()) { // check if exists
-							holder.remove_one_from_products(pos);
-						}
-					}
-					self.recalculate_recipe_prices();
-					self.update(Message::HidePopup);
-				}
-			}
-			
-			Message::CalcClearResource => {
-				if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
-					holder.clear_resource();
-					self.recalculate_recipe_prices();
-				}
-			}
-			
-			Message::CalcClearProduct => {
-				if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
-					holder.clear_product();
-					self.recalculate_recipe_prices();
-				}
-			}
-			
-			Message::ShowPopup => {
-				if !self.popup_ready {
-					self.popup_ready = true;
-				} // Now every button works as a toggle
-				else {
-					self.popup_ready = false;
-					self.extra_stuff_to_do_once_popup_closes();
-				}
-			}
-			
-			Message::HidePopup => {
-				if self.popup_ready {
-					self.popup_ready = false;
-					self.extra_stuff_to_do_once_popup_closes();
-				}
-			}
-			
-			Message::ChangePlotterTimeseries(timeseries) => {
-				self.selected_timeseries = timeseries;
-				if let Some(item) = &self.last_item {
-					let _ = self.get_timeseries_data(&item.clone());
-				}
-			}
-			
-			Message::CalcResetThis => {
-				self.calc_curr_recipe = CurrentRecipe::new();
-				self.calc_description = Content::new();
-				self.update(Message::HidePopup);
-			}
-			
-			Message::CalcChangePriceMultiplier(multi_str) => {
-				let multi = match multi_str.parse::<isize>() {
-					Ok(d) => d,
-					Err(err) => {
-						log_err!("{}", err.to_string());
-						return;
-					}
-				};
-				if multi > 0 {
-					self.calc_price_multi = multi as usize;
-					self.recalculate_recipe_prices();
-				}
-			}
-			
-			Message::CurrentTesat => {
-				self._debug_value = !self._debug_value;
-			}
-			
-			Message::CalcAcceptRecipeName => {
-				if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
-					holder.set_id(self.calc_saved_recipes.len()).set_label(self.extra_string.clone())
-						.set_desc(self.calc_description.text());
-					if let Err(err) = files::save_recipe(&holder) {
-						log_err!("{}", err.to_string());
-						return;
-					}
-					self.popup_ready = false;
-					for data in self.calc_saved_recipes.iter() {
-						let str_offset = data.find(' ').unwrap_or(0);
-						let val = data[..str_offset].to_string().parse::<usize>().unwrap_or_default();
-						if holder.id == val {
-							return;
-						}
-					}
-					self.calc_saved_recipes.push(format!("{} {}", holder.id, holder.label.clone()));
-				}
-			}
-			
-			Message::CalcSelectItem(id) => {
-				let data = match files::load_recipe(id) {
-					Ok(d) => d,
-					Err(err) => {
-						log_err!("{}", err);
-						return;
-					}
-				};
-				self.extra_string = data.label.clone();
-				self.calc_description = Content::with_text(&data.description);
-				self.calc_curr_recipe = CurrentRecipe::from(data);
-				self.recalculate_recipe_prices();
-			}
-			
-			Message::CalcDeleteItem(id) => {
-				if let Err(err) = files::delete_recipe(id) {
-					log_err!("{}", err);
-					return;
-				}
-				self.update(Message::CalcDisableDelMode);
-				for i in 0..self.calc_saved_recipes.len() {
-					let data = &self.calc_saved_recipes[i];
-					let str_offset = data.find(' ').unwrap_or(0);
-					let val = data[..str_offset].to_string().parse::<usize>().unwrap_or_default();
-					if id == val {
-						self.calc_saved_recipes.remove(i);
-						break;
-					}
-				}
-				self.calc_description = Content::new();
-			}
-			
-			Message::CalcChangeItemDesc(action) => {
-				if let CurrentRecipe::Loaded(_) = self.calc_curr_recipe {
-					self.calc_description.perform(action)
-				}
-			}
-			
-			Message::CalcEnableDelMode => {
-				self.extra_bool = true;
-			}
-			
-			Message::CalcDisableDelMode => {
-				self.extra_bool = false;
-			}
-			
-			Message::ChangeExtraString(string) => {
-				self.extra_string = string;
-			}
-			
-			_ => {
-				log_mess!("Invalid Message detected");
-			}
-		}
+	pub fn update(&mut self, message: Message) -> Task<Message> {
+		message::update(self, message)
     }
 	
 	fn update_page(&mut self, page: AppPages) {
