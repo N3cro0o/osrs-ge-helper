@@ -1,4 +1,4 @@
-// #![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 
 use iced::{Element, Center, Size, Pixels, Theme, Subscription, Task};
 use iced::widget::{button, column, row, text, space, container, combo_box, stack, center};
@@ -61,7 +61,7 @@ pub struct MainLayout {
 	pub config_curr_page: ConfigPages,
 	pub config_settings: ConfigSettings,
 	
-	pub extra_string: String, // In Calc => recipe label, Alch => max price temp value,
+	pub extra_string: String, // In Calc => recipe label, Alch => max price temp value
 	pub extra_string_1: String, // Alch => min price temp value,
 	pub extra_string_2: String, // Alch => max volume temp value,
 	pub extra_string_3: String, // Alch => min volume temp value,

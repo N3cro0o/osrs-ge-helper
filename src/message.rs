@@ -16,6 +16,7 @@ pub enum Message {
 	OpenWiki,
 	RefreshTick(Instant),
 	EventOccurred(Event),
+	ResetAllData,
 	
 	AlchemyIncreaseOffset,
 	AlchemyDecreaseOffset,
@@ -43,6 +44,9 @@ pub enum Message {
 	CalcChangePriceMultiplier(String),
 	CalcClearResource,
 	CalcClearProduct,
+	
+	ConfigChangeUpdateInterval(String),
+	OpenExplorer(String),
 	
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
@@ -422,14 +426,26 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 			}
 			state.calc_description = Content::new();
 		}
+				
+		Message::CalcChangeItemDesc(action) => {
+			if let CurrentRecipe::Loaded(_) = state.calc_curr_recipe {
+				state.calc_description.perform(action)
+			}
+		}
 		
 		Message::ChangeConfigPage(page) => {
 			state.config_curr_page = page;
 		}
+
+		Message::ConfigChangeUpdateInterval(time_str) => {
+			let time: usize = time_str.parse().unwrap_or(60);
+			state.config_settings.app_update_interval = time;
+		}
 		
-		Message::CalcChangeItemDesc(action) => {
-			if let CurrentRecipe::Loaded(_) = state.calc_curr_recipe {
-				state.calc_description.perform(action)
+		Message::OpenExplorer(path) => {
+			log_mess!["Openning file explorer in {}", &path];
+			if let Err(err) = open::that(path) {
+				log_err!["Error while openning path: {}", err];
 			}
 		}
 		
@@ -443,6 +459,20 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 		
 		Message::ChangeExtraString(string) => {
 			state.extra_string = string;
+		}
+		
+		Message::ResetAllData => {
+			log_mess!["Deleting all data..."];
+			if let Err(err) = files::delete_all_data() {
+				log_err!["Error while deleting data: {}", err];
+				return Task::none();
+			}
+			state.saved_items_item_view.clear();
+			state.fav_items_alchemy.clear();
+			state.calc_saved_recipes.clear();
+			state.calc_curr_recipe = CurrentRecipe::Empty;
+			state.calc_description = Content::new();
+			log_mess!["DONE"];
 		}
 		
 		_ => {

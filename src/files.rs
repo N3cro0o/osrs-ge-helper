@@ -71,3 +71,14 @@ pub fn save_alchemy(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
 pub fn load_alchemy() -> io::Result<Vec<osrs::DataHolder>> {
 	save::load_alchemy()
 }
+
+pub fn get_local_data_dir() -> io::Result<path::PathBuf> {
+	save::get_local_data_dir()
+}
+
+pub fn delete_all_data() -> io::Result<()> {
+	save::delete_all_recipes()?;
+	save::delete_item_view()?;
+	save::delete_alchemy()?;
+	Ok(())
+}

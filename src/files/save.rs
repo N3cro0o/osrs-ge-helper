@@ -26,9 +26,7 @@ impl<T: std::clone::Clone> Wrapper<T> {
 }
 
 pub fn save_recipe(data: &RecipeHolder) -> io::Result<()> {
-	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
-	let mut path = path::PathBuf::from(path);
-	path.push(DATA_DIR);
+	let mut path = get_local_data_dir()?;
 	path.push(RECIPES_DIR);
 	if !check_dir(&path) {
 		create_dir(&path)?;
@@ -45,9 +43,7 @@ pub fn save_recipe(data: &RecipeHolder) -> io::Result<()> {
 }
 
 pub fn save_view_items(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
-	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
-	let mut path = path::PathBuf::from(path);
-	path.push(DATA_DIR);
+	let mut path = get_local_data_dir()?;
 	path.push(FAVDATA_DIR);
 	if !check_dir(&path) {
 		create_dir(&path)?;
@@ -65,9 +61,7 @@ pub fn save_view_items(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
 }
 
 pub fn save_alchemy(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
-	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
-	let mut path = path::PathBuf::from(path);
-	path.push(DATA_DIR);
+	let mut path = get_local_data_dir()?;
 	path.push(FAVDATA_DIR);
 	if !check_dir(&path) {
 		create_dir(&path)?;
@@ -86,9 +80,7 @@ pub fn save_alchemy(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
 
 pub fn load_recipes_vec() -> io::Result<Vec<String>> {
 	let mut vec = vec![];
-	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
-	let mut path = path::PathBuf::from(path);
-	path.push(DATA_DIR);
+	let mut path = get_local_data_dir()?;
 	path.push(RECIPES_DIR);
 	if !check_dir(&path) {
 		return Err(Error::new(ErrorKind::Other, "Recipes path doesn't exist"));
@@ -112,9 +104,7 @@ pub fn load_recipes_vec() -> io::Result<Vec<String>> {
 }
 
 pub fn load_view_items() -> io::Result<Vec<osrs::DataHolder>> {
-	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
-	let mut path = path::PathBuf::from(path);
-	path.push(DATA_DIR);
+	let mut path = get_local_data_dir()?;
 	path.push(FAVDATA_DIR);
 	if !check_dir(&path) {
 		return Err(Error::new(ErrorKind::Other, "ItemView saved items path doesn't exist"));
@@ -131,9 +121,7 @@ pub fn load_view_items() -> io::Result<Vec<osrs::DataHolder>> {
 }
 
 pub fn load_alchemy() -> io::Result<Vec<osrs::DataHolder>> {
-	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
-	let mut path = path::PathBuf::from(path);
-	path.push(DATA_DIR);
+	let mut path = get_local_data_dir()?;
 	path.push(FAVDATA_DIR);
 	if !check_dir(&path) {
 		return Err(Error::new(ErrorKind::Other, "Alchemy saved items path doesn't exist"));
@@ -162,9 +150,7 @@ pub fn load_recipe(id: usize) -> io::Result<RecipeHolder> {
 	}
 	if let None = target { return Err(Error::new(ErrorKind::Other, format!("Cannot find file with id {id}"))); }
 	let mut target = target.unwrap();
-	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
-	let mut path = path::PathBuf::from(path);
-	path.push(DATA_DIR);
+	let mut path = get_local_data_dir()?;
 	path.push(RECIPES_DIR);
 	path.push(format!("{}-{}.xml", id, target));
 	let mut file = fs::OpenOptions::new().read(true).open(&path)?;
@@ -190,11 +176,43 @@ pub fn delete_recipe(id: usize) -> io::Result<()> {
 	}
 	if let None = target { return Err(Error::new(ErrorKind::Other, format!("Cannot find file with id {id}"))); }
 	let target = target.unwrap();
-	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
-	let mut path = path::PathBuf::from(path);
-	path.push(DATA_DIR);
+	let mut path = get_local_data_dir()?;
 	path.push(RECIPES_DIR);
 	path.push(format!("{}-{}.xml", id, target));
 	fs::remove_file(path)?;
 	Ok(())
+}
+
+pub fn delete_all_recipes() -> io::Result<()> {
+	let mut path = get_local_data_dir()?;
+	path.push(RECIPES_DIR);
+	for entry in fs::read_dir(&path)? {
+		let entry = entry?;
+		fs::remove_file(entry.path())?;
+	}
+	Ok(())
+}
+
+pub fn delete_item_view() -> io::Result<()> {
+	let mut path = get_local_data_dir()?;
+	path.push(FAVDATA_DIR);
+	path.push(ITEM_FILE);
+	fs::remove_file(path)?;
+	Ok(())
+}
+
+pub fn delete_alchemy() -> io::Result<()> {
+	let mut path = get_local_data_dir()?;
+	path.push(FAVDATA_DIR);
+	path.push(ALCH_FILE);
+	fs::remove_file(path)?;
+	Ok(())
+}
+
+
+pub fn get_local_data_dir() -> io::Result<path::PathBuf> {
+	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
+	let mut path = path::PathBuf::from(path);
+	path.push(DATA_DIR);
+	return Ok(path);
 }
