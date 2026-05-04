@@ -1,9 +1,9 @@
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
 
 use iced::{Element, Center, Size, Pixels, Theme, Subscription, Task};
 use iced::widget::{button, column, row, text, space, container, combo_box, stack, center};
 use iced::widget::text_editor::{self, Content};
-use iced::time::{self, Instant, seconds};
+use std::time::{Instant, Duration};
 
 use num_format::{Locale, ToFormattedString};
 
@@ -146,7 +146,9 @@ impl MainLayout {
     }
 	
 	fn subscription(&self) -> Subscription<Message> {
-		time::every(seconds(60)).map(Message::RefreshTick)
+		let update_time = self.config_settings.app_update_interval;
+		let tick = iced::time::every(Duration::from_secs(update_time as u64)).map(Message::RefreshTick);
+		Subscription::batch(vec![tick, iced::event::listen().map(Message::EventOccurred)])
 	}
 	
 	pub fn item_view_plot(&self) -> &ItemViewPlot {

@@ -94,8 +94,10 @@ pub enum ConfigPages {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigSettings {
-	resolution: (f32, f32),
-	resize: bool,
+	pub resolution: (f32, f32),
+	pub resize: bool,
+	// pub theme,
+	pub app_update_interval: usize,
 }
 
 impl ItemViewPlot {
@@ -488,6 +490,7 @@ impl ConfigSettings {
 		ConfigSettings {
 			resolution: (1280.0,720.0),
 			resize: false,
+			app_update_interval: 60,
 		}
 	}
 }

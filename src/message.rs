@@ -1,4 +1,4 @@
-use iced::Task;
+use iced::{Task, Event};
 use crate::*;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -15,6 +15,7 @@ pub enum Message {
 	AlchNewFilter(Option<SearchFilter>),
 	OpenWiki,
 	RefreshTick(Instant),
+	EventOccurred(Event),
 	
 	AlchemyIncreaseOffset,
 	AlchemyDecreaseOffset,
@@ -61,6 +62,10 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 			state.bond_sell_price = state.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
 			state.create_combo_box_data();
 			state.calculate_best_alchemy();
+		}
+		
+		Message::EventOccurred(event) => {
+			// Add something here later
 		}
 		
 		Message::AddItem(item) => {

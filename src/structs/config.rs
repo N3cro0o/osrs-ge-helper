@@ -1,5 +1,5 @@
 use iced::{Element, Length};
-use iced::widget::{column, text, center, space, container, button};
+use iced::widget::{column, row, text, center, space, container, button, text_input, Column};
 
 use crate::{Message, MainLayout};
 use crate::{APP_PADDING, APP_SPACING};
@@ -13,69 +13,39 @@ impl structs::AppPages {
 						button("General")
 							.on_press_maybe(
 								(state.config_curr_page != ConfigPages::AppSettings)
-									.then_some(Message::ChangeConfigPage(ConfigPages::AppSettings))
-								)
+									.then_some(Message::ChangeConfigPage(ConfigPages::AppSettings)))
 							.style(
-								if state.config_curr_page == ConfigPages::AppSettings {
-									button::danger
-								}
-								else {
-									button::primary
-								}
-								),
+								if state.config_curr_page == ConfigPages::AppSettings { button::danger }
+								else { button::primary }),
 						button("Window")
 							.on_press_maybe(
 								(state.config_curr_page != ConfigPages::WindowSettings)
-									.then_some(Message::ChangeConfigPage(ConfigPages::WindowSettings))
-								)
+									.then_some(Message::ChangeConfigPage(ConfigPages::WindowSettings)))
 							.style(
-								if state.config_curr_page == ConfigPages::WindowSettings {
-									button::danger
-								}
-								else {
-									button::primary
-								}
-								),
+								if state.config_curr_page == ConfigPages::WindowSettings { button::danger }
+								else { button::primary }),
 						button("Customisation")
 							.on_press_maybe(
 								(state.config_curr_page != ConfigPages::Customization)
-									.then_some(Message::ChangeConfigPage(ConfigPages::Customization))
-								)
+									.then_some(Message::ChangeConfigPage(ConfigPages::Customization)))
 							.style(
-								if state.config_curr_page == ConfigPages::Customization {
-									button::danger
-								}
-								else {
-									button::primary
-								}
-								),
+								if state.config_curr_page == ConfigPages::Customization { button::danger }
+								else { button::primary }),
 						button("Notifcations")
 							.on_press_maybe(
 								(state.config_curr_page != ConfigPages::PingSettings)
-									.then_some(Message::ChangeConfigPage(ConfigPages::PingSettings))
-								)
+									.then_some(Message::ChangeConfigPage(ConfigPages::PingSettings)))
 							.style(
-								if state.config_curr_page == ConfigPages::PingSettings {
-									button::danger
-								}
-								else {
-									button::primary
-								}
-								),
+								if state.config_curr_page == ConfigPages::PingSettings { button::danger }
+								else { button::primary }),
 						space::vertical(),
 						button("Credits")
 							.on_press_maybe(
 								(state.config_curr_page != ConfigPages::Credits)
-									.then_some(Message::ChangeConfigPage(ConfigPages::Credits))
-								)
+									.then_some(Message::ChangeConfigPage(ConfigPages::Credits)))
 							.style(
-								if state.config_curr_page == ConfigPages::Credits {
-									button::danger
-								}
-								else {
-									button::primary
-								}
-								),
+								if state.config_curr_page == ConfigPages::Credits { button::danger }
+								else { button::primary }),
 					]
 					.spacing(APP_SPACING)
 					.padding(APP_PADDING)
@@ -95,48 +65,53 @@ impl structs::AppPages {
 			ConfigPages::Credits => self.credits_body(state),
 		};
 		
-		let main = center(body)
+		let main = center(row![
+				space::horizontal().width(Length::FillPortion(1)),
+				body.width(Length::FillPortion(8)),
+				space::horizontal().width(Length::FillPortion(1)),
+			])
 			.style(container::rounded_box);
 		main.into()
 	}
 	
-	fn app_settings_body<'a>(&self, _state: &'a MainLayout) -> Element<'a, Message>  {
+	fn app_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message>  {
 		column![
-				text("Nothing"),
+				row![
+						text("Update interval:"),
+						space::horizontal(),
+						text_input("", &state.config_settings.app_update_interval.to_string()),
+						text("sec"),
+					].spacing(APP_SPACING),
+				
 			]
 			.spacing(APP_SPACING)
-			.into()
 	}
 	
-	fn window_settings_body<'a>(&self, _state: &'a MainLayout) -> Element<'a, Message> {
+	fn window_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
 		column![
-				text("to see"),
+				text("Nothing to see"),
 			]
 			.spacing(APP_SPACING)
-			.into()
 	}
 	
-	fn ping_settings_body<'a>(&self, _state: &'a MainLayout) -> Element<'a, Message> {
+	fn ping_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
 		column![
 				text("for now"),
 			]
 			.spacing(APP_SPACING)
-			.into()
 	}
 	
-	fn customization_settings_body<'a>(&self, _state: &'a MainLayout) -> Element<'a, Message> {
+	fn customization_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
 		column![
 				text("here..."),
 			]
 			.spacing(APP_SPACING)
-			.into()
 	}
 	
-	fn credits_body<'a>(&self, _state: &'a MainLayout) -> Element<'a, Message> {
+	fn credits_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
 		column![
 				text("MONEY"),
 			]
 			.spacing(APP_SPACING)
-			.into()
 	}
 }
