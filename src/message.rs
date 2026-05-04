@@ -16,6 +16,9 @@ pub enum Message {
 	OpenWiki,
 	RefreshTick(Instant),
 	EventOccurred(Event),
+	ResetItemView,
+	ResetAlchemy,
+	ResetCalculator,
 	ResetAllData,
 	
 	AlchemyIncreaseOffset,
@@ -461,9 +464,52 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 			state.extra_string = string;
 		}
 		
+		Message::ResetItemView => {
+			log_mess!["Deleting ItemView data..."];
+			if let Err(err) = files::delete_item_view() {
+				log_err!["Error while deleting data: {}", err];
+				return Task::none();
+			}
+			state.saved_items_item_view.clear();
+			log_mess!["DONE"];
+		}
+				
+		Message::ResetAlchemy => {
+			log_mess!["Deleting Alchemy data..."];
+			if let Err(err) = files::delete_alchemy() {
+				log_err!["Error while deleting data: {}", err];
+				return Task::none();
+			}
+			state.fav_items_alchemy.clear();
+			log_mess!["DONE"];
+		}
+				
+		Message::ResetCalculator => {
+			log_mess!["Deleting Calculator data..."];
+			if let Err(err) = files::delete_all_recipes() {
+				log_err!["Error while deleting data: {}", err];
+				return Task::none();
+			}
+			state.calc_saved_recipes.clear();
+			state.calc_curr_recipe = CurrentRecipe::Empty;
+			state.calc_description = Content::new();
+			log_mess!["DONE"];
+		}
+				
 		Message::ResetAllData => {
 			log_mess!["Deleting all data..."];
-			if let Err(err) = files::delete_all_data() {
+			log_mess!["Deleting ItemView data..."];
+			if let Err(err) = files::delete_item_view() {
+				log_err!["Error while deleting data: {}", err];
+				return Task::none();
+			}
+			log_mess!["Deleting Alchemy data..."];
+			if let Err(err) = files::delete_alchemy() {
+				log_err!["Error while deleting data: {}", err];
+				return Task::none();
+			}
+			log_mess!["Deleting Calculator data..."];
+			if let Err(err) = files::delete_all_recipes() {
 				log_err!["Error while deleting data: {}", err];
 				return Task::none();
 			}

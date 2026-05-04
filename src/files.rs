@@ -76,9 +76,14 @@ pub fn get_local_data_dir() -> io::Result<path::PathBuf> {
 	save::get_local_data_dir()
 }
 
-pub fn delete_all_data() -> io::Result<()> {
-	save::delete_all_recipes()?;
-	save::delete_item_view()?;
-	save::delete_alchemy()?;
-	Ok(())
+pub fn delete_all_recipes() -> io::Result<()> {
+	save::delete_all_recipes()
+}
+
+pub fn delete_item_view() -> io::Result<()> {
+	save::delete_item_view()	
+}
+
+pub fn delete_alchemy() -> io::Result<()> {
+	save::delete_alchemy()	
 }

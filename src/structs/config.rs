@@ -107,7 +107,14 @@ impl structs::AppPages {
 				space::vertical().height(Length::Fixed(50.0)),
 				row![
 						space::horizontal(),
-						button("Reset data")
+						button("Delete Item View data")
+							.on_press(Message::ResetItemView),
+						button("Delete Alchemy data")
+							.on_press(Message::ResetAlchemy),
+						button("Delete Calculator data")
+							.on_press(Message::ResetCalculator),
+						space::horizontal().width(Length::Fixed(20.0)),
+						button("Delete all data")
 							.on_press(Message::ResetAllData)
 							.style(button::danger),
 						space::horizontal(),
