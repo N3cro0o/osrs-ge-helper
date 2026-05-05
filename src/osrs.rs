@@ -117,8 +117,10 @@ impl DataHolder {
 			if volume < f.minimum_volume || volume > f.maximum_volume {
 				return false;
 			}
-			if let None = list.iter().position(|item| self == item) && f.only_selected {
-				return false;
+			if f.only_selected {
+				if let None = list.iter().position(|item| self == item) {
+					return false;
+				}
 			}
 			true
 		}

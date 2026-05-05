@@ -493,6 +493,10 @@ impl ConfigSettings {
 			app_update_interval: 60,
 		}
 	}
+	
+	pub fn resolution(&self) -> iced::Size {
+		iced::Size::new(self.resolution.0, self.resolution.1)
+	}
 }
 
 impl Default for ConfigSettings {

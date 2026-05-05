@@ -16,6 +16,7 @@ impl structs::AppPages {
 			button_vec.push(
 				button(text(data.short_description()))
 				.on_press_with(|| Message::SelectItem(data.clone()))
+				.width(Length::Fixed(500.0))
 				.into()
 				);
 		}

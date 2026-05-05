@@ -25,6 +25,7 @@ impl structs::AppPages {
 								Message::CalcSelectItem(val) 
 							}
 						})
+					.width(Length::Fixed(500.0))
 					.into()
 				);
 		}

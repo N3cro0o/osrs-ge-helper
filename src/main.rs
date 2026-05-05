@@ -267,7 +267,17 @@ impl MainLayout {
 		message::update(self, message)
     }
 	
-	fn update_page(&mut self, page: AppPages) {
+	fn update_page(&mut self, page: AppPages) -> Task<Message> {
+		let mut task_to_ret = Task::none();
+		if self.current_page == AppPages::Config {
+			task_to_ret = match self.config_change_changes() {
+				Ok(t) => t,
+				Err(err) => {
+					log_err!["Error while saving config settings: {}", err];
+					Task::none()
+				}
+			};
+		}
 		match page {
 			AppPages::Alchemy => {
 				self.calculate_best_alchemy();
@@ -299,12 +309,13 @@ impl MainLayout {
 				self.extra_bool = false;
 				self.extra_bool_1 = false;
 			}
+			
 			_ => {
 				self.last_item = None;
 				self.last_item_ge = None;
-				self.extra_string.clear();
-				self.extra_string_1.clear();
-				self.extra_string_2.clear();
+				self.extra_string = self.config_settings.app_update_interval.to_string();
+				self.extra_string_1 = self.config_settings.resolution.0.to_string();
+				self.extra_string_2 = self.config_settings.resolution.1.to_string();
 				self.extra_string_3.clear();
 				self.plotter.reset_data();
 				self.extra_bool = false;
@@ -314,6 +325,41 @@ impl MainLayout {
 		self.current_page = page;
 		self.popup_ready = false;
 		log_mess!("{}", self.current_page.return_current_page_info());
+		return task_to_ret;
+	}
+	
+	fn config_change_changes(&mut self) -> Result<Task<Message>, String> {
+		let app_interval = match self.extra_string.parse::<usize>() {
+			Ok(i) => {
+				if i < 10 { 10 } else { i }
+			}
+			Err(err) => {
+				log_err![err];
+				60 // DEFAULT VALUE HERE!!!!! 
+			} 
+		};
+		let width = match self.extra_string_1.parse::<usize>() {
+			Ok(i) => {
+				if i < 10 { 10 } else { i }
+			}
+			Err(err) => {
+				log_err![err];
+				1280 // DEFAULT VALUE HERE!!!!! 
+			} 
+		};
+		let height = match self.extra_string_2.parse::<usize>() {
+			Ok(i) => {
+				if i < 10 { 10 } else { i }
+			}
+			Err(err) => {
+				log_err![err];
+				720 // DEFAULT VALUE HERE!!!!! 
+			} 
+		};
+		self.config_settings.app_update_interval = app_interval;
+		self.config_settings.resolution = (width as f32, height as f32);
+		let res = self.config_settings.resolution();
+		Ok(iced::window::latest().and_then(move |id| iced::window::resize::<Message>(id, res)))
 	}
 	
 	fn extra_stuff_to_do_once_popup_closes(&mut self) {
@@ -623,7 +669,7 @@ fn main() -> iced::Result<> {
 	let mut window_settings = iced::window::Settings::default();
 	window_settings.min_size = Some(Size::new(1280.0,720.0));
 	window_settings.size = Size::new(1280.0,720.0);
-	window_settings.resizable = true;
+	window_settings.resizable = false;
 	
 	let app = iced::application(MainLayout::default, MainLayout::update, MainLayout::view)
 		.window(window_settings)

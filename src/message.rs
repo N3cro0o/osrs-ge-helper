@@ -1,4 +1,5 @@
 use iced::{Task, Event};
+use std::sync::LazyLock; // Lazylock to keep Regex in memory
 use crate::*;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,16 +50,19 @@ pub enum Message {
 	CalcClearProduct,
 	
 	ConfigChangeUpdateInterval(String),
+	ConfigChangeResolutionWidth(String),
+	ConfigChangeResolutionHeight(String),
 	OpenExplorer(String),
 	
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
 	ShowPopup,
 	HidePopup,
-	ChangeConfigPage(ConfigPages)
+	ChangeConfigPage(ConfigPages),
 }
 
 pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> {
+	static RULE: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"^[0-9]*$").unwrap());
 	match message {
 		Message::RefreshData => {
 			log_mess!("Get data from OSRS wiki...");
@@ -71,7 +75,7 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 			state.calculate_best_alchemy();
 		}
 		
-		Message::EventOccurred(event) => {
+		Message::EventOccurred(_event) => {
 			// Add something here later
 		}
 		
@@ -114,7 +118,7 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 		}
 		
 		Message::ChangePage(page) => {
-			state.update_page(page);
+			return state.update_page(page);
 		}
 		
 		Message::ComboNewFilter(filter) => {
@@ -268,7 +272,7 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 		}
 		
 		Message::AlchemyCheckItem(item) => {
-			state.update_page(AppPages::ItemView);
+			let _ = state.update_page(AppPages::ItemView);
 			state.select_new_item(&item);
 			let _ = state.get_timeseries_data(&item);
 		}
@@ -441,8 +445,17 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 		}
 
 		Message::ConfigChangeUpdateInterval(time_str) => {
-			let time: usize = time_str.parse().unwrap_or(60);
-			state.config_settings.app_update_interval = time;
+			if RULE.is_match(&time_str) {
+				state.extra_string = time_str;
+			}
+		}
+		
+		Message::ConfigChangeResolutionWidth(x) => {
+			if RULE.is_match(&x) { state.extra_string_1 = x; }
+		}	
+		
+		Message::ConfigChangeResolutionHeight(y) => {
+			if RULE.is_match(&y) { state.extra_string_2 = y; }
 		}
 		
 		Message::OpenExplorer(path) => {

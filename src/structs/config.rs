@@ -1,10 +1,10 @@
-use iced::{Element, Length};
+use iced::{Element, Length, Center};
 use iced::widget::{column, row, text, center, space, container, button, text_input, Column};
 
 use crate::{Message, MainLayout};
 use crate::{APP_PADDING, APP_SPACING};
 use crate::structs::{self, ConfigPages};
-use crate::{log_err, log_mess};
+use crate::log_err;
 
 impl structs::AppPages {
 	pub fn config_sidebar_view<'a>(&'a self, state: &'a MainLayout) -> Element<'a, Message> {
@@ -93,9 +93,10 @@ impl structs::AppPages {
 				row![
 						text("Update interval:"),
 						space::horizontal(),
-						text_input("", &state.config_settings.app_update_interval.to_string())
+						text_input("", &state.extra_string) // &state.config_settings.app_update_interval.to_string()
 							.on_input(Message::ConfigChangeUpdateInterval)
-							.width(Length::Fixed(100.0)),
+							.width(Length::Fixed(100.0))
+							.align_x(Center),
 						text("sec"),
 					].spacing(APP_SPACING)
 					.align_y(iced::Center),
@@ -113,19 +114,30 @@ impl structs::AppPages {
 							.on_press(Message::ResetAlchemy),
 						button("Delete Calculator data")
 							.on_press(Message::ResetCalculator),
-						space::horizontal().width(Length::Fixed(20.0)),
-						button("Delete all data")
-							.on_press(Message::ResetAllData)
-							.style(button::danger),
 						space::horizontal(),
 					].spacing(APP_SPACING),
+				space::vertical().height(Length::Fixed(10.0)),
+				container(button("Delete all data")
+					.on_press(Message::ResetAllData)
+					.style(button::danger)).center_x(Length::Fill),
 			]
 			.spacing(APP_SPACING)
 	}
 	
-	fn window_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
+	fn window_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message> {
 		column![
-				text("Nothing to see"),
+				text("Window size").width(Length::Fill).center(), // Change to dropbox
+				row![
+						space::horizontal(),
+						text_input("Width", &state.extra_string_1)
+							.on_input(Message::ConfigChangeResolutionWidth)
+							.align_x(Center),
+						space::horizontal(),
+						text_input("Height", &state.extra_string_2)
+							.on_input(Message::ConfigChangeResolutionHeight)
+							.align_x(Center),
+						space::horizontal(),
+					]
 			]
 			.spacing(APP_SPACING)
 	}
@@ -139,7 +151,7 @@ impl structs::AppPages {
 	
 	fn customization_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
 		column![
-				text("here..."),
+				text("Nothing to see here..."),
 			]
 			.spacing(APP_SPACING)
 	}
