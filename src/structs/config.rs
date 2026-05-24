@@ -1,9 +1,9 @@
 use iced::{Element, Length, Center};
-use iced::widget::{column, row, text, center, space, container, button, text_input, Column};
+use iced::widget::{column, row, text, center, space, container, button, text_input, Column, combo_box};
 
 use crate::{Message, MainLayout};
-use crate::{APP_PADDING, APP_SPACING};
-use crate::structs::{self, ConfigPages};
+use crate::{APP_PADDING, APP_SPACING, IMAGE_SIZE_WIDTH, COMBOBOX_MENU_HEIGHT};
+use crate::structs::{self, ConfigPages, WebPage};
 use crate::log_err;
 
 impl structs::AppPages {
@@ -35,14 +35,14 @@ impl structs::AppPages {
 								if state.config_curr_page == ConfigPages::Customization { button::danger }
 								else { button::primary })
 							.width(Length::Fill),
-						button("Notifcations")
-							.on_press_maybe(
-								(state.config_curr_page != ConfigPages::PingSettings)
-									.then_some(Message::ChangeConfigPage(ConfigPages::PingSettings)))
-							.style(
-								if state.config_curr_page == ConfigPages::PingSettings { button::danger }
-								else { button::primary })
-							.width(Length::Fill),
+						// button("Notifcations")
+						// 	.on_press_maybe(
+						// 		(state.config_curr_page != ConfigPages::PingSettings)
+						// 			.then_some(Message::ChangeConfigPage(ConfigPages::PingSettings)))
+						// 	.style(
+						// 		if state.config_curr_page == ConfigPages::PingSettings { button::danger }
+						// 		else { button::primary })
+						// 	.width(Length::Fill),
 						space::vertical(),
 						button("Credits")
 							.on_press_maybe(
@@ -125,21 +125,35 @@ impl structs::AppPages {
 	}
 	
 	fn window_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message> {
-		column![
-				text("Window size").width(Length::Fill).center(), // Change to dropbox
-				row![
-						space::horizontal(),
-						text_input("Width", &state.extra_string_1)
-							.on_input(Message::ConfigChangeResolutionWidth)
-							.align_x(Center),
-						space::horizontal(),
-						text_input("Height", &state.extra_string_2)
-							.on_input(Message::ConfigChangeResolutionHeight)
-							.align_x(Center),
-						space::horizontal(),
-					]
-			]
+		let combo = combo_box(
+        &state.config_window_combo_data,
+        "Select window resolution",
+        Some(&state.config_settings.new_resolution),
+        Message::ConfigChangeResolutionNew,
+        )
+        .menu_height(Length::Fixed(COMBOBOX_MENU_HEIGHT))
+			  .width(400);
+
+    column![
+				// text("Window size").width(Length::Fill).center(), // Change to dropbox
+				// row![
+				// 		space::horizontal(),
+				// 		text_input("Width", &state.extra_string_1)
+				// 			.on_input(Message::ConfigChangeResolutionWidth)
+				// 			.align_x(Center),
+				// 		space::horizontal(),
+				// 		text_input("Height", &state.extra_string_2)
+				// 			.on_input(Message::ConfigChangeResolutionHeight)
+				// 			.align_x(Center),
+				// 		space::horizontal(),
+				// 	].spacing(APP_SPACING),
+        combo,
+        space::horizontal().width(Length::Fixed(15.0)),
+        iced::widget::toggler(true)
+            .label("Resizable window (requires restart)"),
+    ]
 			.spacing(APP_SPACING)
+      .align_x(Center)
 	}
 	
 	fn ping_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
@@ -157,9 +171,27 @@ impl structs::AppPages {
 	}
 	
 	fn credits_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
-		column![
-				text("MONEY"),
-			]
-			.spacing(APP_SPACING)
-	}
+		let c = column![
+        text("Where you can find me").size(24).width(Length::Fill).center(),
+        row![
+            space::horizontal(),
+            button(iced::widget::image("img/itch.png").width(Length::Fixed(IMAGE_SIZE_WIDTH)))
+              .on_press(Message::OpenWebPage(WebPage::Itch))
+              .style(button::text),
+            button(iced::widget::image("img/twitter.png").width(Length::Fixed(IMAGE_SIZE_WIDTH)))
+              .on_press(Message::OpenWebPage(WebPage::Twitter))
+              .style(button::text),
+            button(iced::widget::image("img/github.png").width(Length::Fixed(IMAGE_SIZE_WIDTH)))
+              .on_press(Message::OpenWebPage(WebPage::Github))
+              .style(button::text),
+            space::horizontal(),
+          ].spacing(APP_SPACING),
+        space::horizontal().width(Length::Fixed(20.0)),
+        text("Thank you for using my silly little tool, I hope it was useful for at least a minute or two :P.").width(Length::Fill).center(),
+        text("This calculator will be updated and new functions will be added. If you have an idea how to improve this app, write an issue or send me a DM.")
+            .width(Length::Fill).center(),
+      ]
+			.spacing(APP_SPACING);
+	  c
+  }
 }

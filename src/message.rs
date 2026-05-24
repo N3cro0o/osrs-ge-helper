@@ -1,6 +1,7 @@
 use iced::{Task, Event};
 use std::sync::LazyLock; // Lazylock to keep Regex in memory
 use crate::*;
+use crate::structs::{WebPage, WindowSizes};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
@@ -21,7 +22,8 @@ pub enum Message {
 	ResetAlchemy,
 	ResetCalculator,
 	ResetAllData,
-	
+  OpenWebPage(WebPage),
+  
 	AlchemyIncreaseOffset,
 	AlchemyDecreaseOffset,
 	AlchemyCheckItem(osrs::DataHolder),
@@ -52,7 +54,8 @@ pub enum Message {
 	ConfigChangeUpdateInterval(String),
 	ConfigChangeResolutionWidth(String),
 	ConfigChangeResolutionHeight(String),
-	OpenExplorer(String),
+	ConfigChangeResolutionNew(WindowSizes),
+  OpenExplorer(String),
 	
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
@@ -457,6 +460,10 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 		Message::ConfigChangeResolutionHeight(y) => {
 			if RULE.is_match(&y) { state.extra_string_2 = y; }
 		}
+
+    Message::ConfigChangeResolutionNew(res) => {
+        state.config_settings.new_resolution = res;
+    }
 		
 		Message::OpenExplorer(path) => {
 			log_mess!["Openning file explorer in {}", &path];
@@ -533,7 +540,13 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 			state.calc_description = Content::new();
 			log_mess!["DONE"];
 		}
-		
+	
+    Message::OpenWebPage(page) => {
+      if webbrowser::open(page.get_url()).is_err() {
+        log_mess!("Cannot open web page");
+      }
+    }
+
 		_ => {
 			log_mess!("Invalid Message detected");
 			return iced::window::latest().and_then(iced::window::close);

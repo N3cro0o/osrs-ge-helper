@@ -1,5 +1,3 @@
-// TODO: Refactor AppPages implementations to different files
-
 use chrono::{TimeZone, Local};
 use serde::{Serialize, Deserialize};
 
@@ -95,9 +93,23 @@ pub enum ConfigPages {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigSettings {
 	pub resolution: (f32, f32),
+  pub new_resolution: WindowSizes,
 	pub resize: bool,
 	// pub theme,
 	pub app_update_interval: usize,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum WebPage {
+  Itch,
+  Twitter,
+  Github,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct WindowSizes {
+    pub width: u16,
+    pub height: u16,
 }
 
 impl ItemViewPlot {
@@ -489,18 +501,54 @@ impl ConfigSettings {
 	pub fn new() -> Self {
 		ConfigSettings {
 			resolution: (1280.0,720.0),
+      new_resolution: WindowSizes::default(),
 			resize: false,
 			app_update_interval: 60,
 		}
 	}
 	
 	pub fn resolution(&self) -> iced::Size {
-		iced::Size::new(self.resolution.0, self.resolution.1)
+		iced::Size::new(self.new_resolution.width.into(), self.new_resolution.height.into())
 	}
 }
 
 impl Default for ConfigSettings {
 	fn default() -> Self {
 		ConfigSettings::new()
+	}
+}
+
+impl WebPage {
+  pub fn get_url(&self) -> &str {
+      match self {
+          WebPage::Itch => "https://n3cro0odev.itch.io",
+          WebPage::Twitter => "https://x.com/N3cro0oDev",
+          WebPage::Github => "https://github.com/N3cro0o",
+      }
+  }
+}
+
+impl WindowSizes {
+    pub fn all() -> Vec<Self> {
+        vec![
+            WindowSizes {width: 1280, height: 720},
+            WindowSizes {width: 1440, height: 900},
+            WindowSizes {width: 1600, height: 900},
+            WindowSizes {width: 1920, height: 1080},
+            WindowSizes {width: 1920, height: 1200},
+        ]
+    }
+}
+
+impl std::fmt::Display for WindowSizes {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let string = format!("Width: {}, Height: {}", self.width, self.height);
+    write!(f, "{}", string)
+	}
+}
+
+impl Default for WindowSizes {
+	fn default() -> Self {
+		WindowSizes {width: 1280, height: 720}
 	}
 }

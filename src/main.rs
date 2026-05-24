@@ -16,7 +16,7 @@ pub mod structs;
 pub mod files;
 
 use message::Message;
-use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot};
+use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot, WindowSizes};
 use structs::{ConfigPages, ConfigSettings};
 
 pub const BOND_ID: usize = 13190;
@@ -26,11 +26,12 @@ pub const APP_PADDING: Pixels = Pixels(5.0);
 pub const COMBOBOX_MENU_HEIGHT: f32 = 300.0;
 pub const ALCHEMY_DAILY_VOLUME_LIMIT: usize = 100;
 pub const ALCHEMY_VEC_SIZE: usize = 12;
+pub const IMAGE_SIZE_WIDTH: f32 = 128.0;
 
 pub struct MainLayout {
 	plotter: ItemViewPlot,
 	
-    pub _debug_value: bool,
+  pub _debug_value: bool,
 	pub data: Vec<osrs::DataHolder>,
 	pub latest_ge_data: osrs::LatestData,
 	pub combo_data: combo_box::State<osrs::DataHolder>,
@@ -60,7 +61,8 @@ pub struct MainLayout {
 	
 	pub config_curr_page: ConfigPages,
 	pub config_settings: ConfigSettings,
-	
+  pub config_window_combo_data: combo_box::State<structs::WindowSizes>,
+
 	pub extra_string: String, // In Calc => recipe label, Alch => max price temp value
 	pub extra_string_1: String, // Alch => min price temp value,
 	pub extra_string_2: String, // Alch => max volume temp value,
@@ -127,7 +129,8 @@ impl MainLayout {
 			
 			config_curr_page: ConfigPages::AppSettings,
 			config_settings: ConfigSettings::default(),
-			
+		  config_window_combo_data: combo_box::State::new(WindowSizes::all()),
+
 			extra_string: String::new(),
 			extra_string_1: String::new(),
 			extra_string_2: String::new(),
