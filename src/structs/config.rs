@@ -1,5 +1,5 @@
-use iced::{Element, Length, Center};
-use iced::widget::{column, row, text, center, space, container, button, text_input, Column, combo_box};
+use iced::{Element, Length, Center, Theme};
+use iced::widget::{column, row, text, center, pick_list, space, container, button, text_input, Column, combo_box};
 
 use crate::{Message, MainLayout};
 use crate::{APP_PADDING, APP_SPACING, IMAGE_SIZE_WIDTH, COMBOBOX_MENU_HEIGHT};
@@ -158,15 +158,16 @@ impl structs::AppPages {
 	
 	fn ping_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
 		column![
-				text("for now"),
+				text("Nothing to see here... for now"),
 			]
 			.spacing(APP_SPACING)
 	}
 	
-	fn customization_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
+	fn customization_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message> {
 		column![
-				text("Nothing to see here..."),
-			]
+		    pick_list(Theme::ALL, state.theme(), Message::ConfigChangeTheme,)
+            .placeholder("Theme"),
+      ]
 			.spacing(APP_SPACING)
 	}
 	

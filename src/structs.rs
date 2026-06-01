@@ -95,7 +95,7 @@ pub struct ConfigSettings {
 	pub resolution: (f32, f32),
   pub new_resolution: WindowSizes,
 	pub resize: bool,
-	// pub theme,
+  pub theme: Option<isize>,  // Positive -> predefined, Negative -> custom, None -> default
 	pub app_update_interval: usize,
 }
 
@@ -504,6 +504,7 @@ impl ConfigSettings {
       new_resolution: WindowSizes::default(),
 			resize: false,
 			app_update_interval: 60,
+      theme: None,
 		}
 	}
 	

@@ -55,6 +55,7 @@ pub enum Message {
 	ConfigChangeResolutionWidth(String),
 	ConfigChangeResolutionHeight(String),
 	ConfigChangeResolutionNew(WindowSizes),
+  ConfigChangeTheme(Theme),
   OpenExplorer(String),
 	
 	ChangePlotterTimeseries(osrs::Timeseries),
@@ -464,7 +465,11 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
     Message::ConfigChangeResolutionNew(res) => {
         state.config_settings.new_resolution = res;
     }
-		
+
+    Message::ConfigChangeTheme(theme) => {
+        log_mess!["{:?}", theme];
+    }
+
 		Message::OpenExplorer(path) => {
 			log_mess!["Openning file explorer in {}", &path];
 			if let Err(err) = open::that(path) {

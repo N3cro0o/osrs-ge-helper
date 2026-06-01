@@ -5,15 +5,35 @@ This app enables to check current GE prices and create recipes and calculate pro
 
 This software only aids the user and does not take responibility for possible item / coin loss.
 
-## Item View
+## App pages
+
+### Item View
 
 In this section User can check current selling and buying price of available items. Historic data is shown in the form of graph with multiple timeseries.
 
-## Alchemy
+### Alchemy
 
 In this section User can check the most profitable items to use with High Alchemy spell. Data is shown in the form of a table.
 
-## Recipe Calculator
+### Recipe Calculator
 
 The main section of this app, User can create custom recipes and save them for later. Upon creating / loading the recipe profit is being calulated
 using current GE prices. Users can use already created recipes as resources and chain multiple recipes into one crafting tree.
+
+## Todo
+
+* Config
+  * Credits
+  * Refresh system offset ????
+  * Other themes
+  * Check for new updates
+  * Add sound pings options
+* App image
+* Theme change
+  * Invert current colours
+  * Use secondary colours for elements
+* Add button images
+  * Member item filter
+  * Save / favourite
+* Write docs comments
+* Localization

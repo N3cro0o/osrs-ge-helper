@@ -40,7 +40,6 @@ pub struct MainLayout {
 	pub last_item: Option<osrs::DataHolder>,
 	pub last_item_ge: Option<osrs::GEData>,
 	pub title: String,
-	pub theme: Option<Theme>,
 	pub current_page: AppPages,
 	pub popup_ready: bool,
 	
@@ -95,7 +94,6 @@ impl MainLayout {
 				vec![]
 			}
 		};
-		let theme = Some(Theme::CatppuccinFrappe);
 		let mut layout = MainLayout {
 			plotter: ItemViewPlot::default(),
 			
@@ -108,7 +106,6 @@ impl MainLayout {
 			last_item: None,
 			last_item_ge: None,
 			title: "OSRS GE Calculator".to_string(),
-			theme,
 			current_page: AppPages::ItemView,
 			popup_ready: false,
 			
@@ -654,7 +651,13 @@ pub fn get_alch_fav_vec(&self) -> Vec<String> {
 }
 	
 	fn theme(&self) -> Option<Theme> {
-		self.theme.clone()
+		Some(match self.config_settings.theme {
+        Some(t) => { 
+            if t >= 0 { Theme::ALL[t as usize].clone() }
+            else { /*TODO add custom palette*/ Theme::CatppuccinFrappe}
+        }
+        None => Theme::CatppuccinFrappe,
+    })
 	}
 }
 
@@ -673,7 +676,8 @@ fn main() -> iced::Result<> {
 	window_settings.min_size = Some(Size::new(1280.0,720.0));
 	window_settings.size = Size::new(1280.0,720.0);
 	window_settings.resizable = false;
-	
+
+
 	let app = iced::application(MainLayout::default, MainLayout::update, MainLayout::view)
 		.window(window_settings)
 		.theme(MainLayout::theme)
