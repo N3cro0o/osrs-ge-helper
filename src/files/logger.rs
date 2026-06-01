@@ -71,12 +71,15 @@ pub fn setup() -> io::Result<()> {
 		create_dir(&path)?;
 	}
 	let log_vec = get_logs_files_vec(&path)?;
+  dbg!(&log_vec);
 	if !log_vec.is_empty() && log_vec.len() >= 5 {
 		let mut to_del = String::new();
-		let mut date_to_del = chrono::DateTime::<chrono::Local>::MAX_UTC;
+		let mut date_to_del = chrono::NaiveDateTime::MAX;
 		for string in log_vec.iter() {
-			let dt = chrono::DateTime::parse_from_str(&string, "%d_%m_%Y_%H_%M");
+      println!["{}", string];
+			let dt = chrono::NaiveDateTime::parse_from_str(&string, "%d_%m_%Y_%H_%M");
 			if dt.is_err() {
+        println!("{}", dt.unwrap_err());
 				to_del = string.clone();
 				break;
 			}
@@ -142,6 +145,7 @@ fn get_logs_files_vec(path: &path::PathBuf) -> io::Result<Vec<String>> {
 }
 
 fn delete_log(file: String) -> io::Result<()> {
+  println!["To del: {}", file];
 	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
 	let mut path = path::PathBuf::from(path);
 	path.push(DATA_DIR);

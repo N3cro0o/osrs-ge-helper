@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 
 use iced::{Element, Center, Size, Pixels, Theme, Subscription, Task};
 use iced::widget::{button, column, row, text, space, container, combo_box, stack, center};
