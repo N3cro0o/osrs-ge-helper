@@ -44,6 +44,14 @@ impl structs::AppPages {
 						// 		else { button::primary })
 						// 	.width(Length::Fill),
 						space::vertical(),
+            button("Accept")
+                .style(button::success)
+							  .width(Length::Fill)
+                .on_press_maybe(accept_press(state)),
+            button("Discard")
+                .style(button::danger)
+							  .width(Length::Fill)
+                .on_press_maybe(reject_press(state)),
 						button("Credits")
 							.on_press_maybe(
 								(state.config_curr_page != ConfigPages::Credits)
@@ -147,10 +155,9 @@ impl structs::AppPages {
 				// 			.align_x(Center),
 				// 		space::horizontal(),
 				// 	].spacing(APP_SPACING),
+        text("Select window resolution:"),
         combo,
-        space::horizontal().width(Length::Fixed(15.0)),
-        iced::widget::toggler(true)
-            .label("Resizable window (requires restart)"),
+        space::horizontal().width(Length::Fixed(50.0)),
     ]
 			.spacing(APP_SPACING)
       .align_x(Center)
@@ -194,5 +201,24 @@ impl structs::AppPages {
       ]
 			.spacing(APP_SPACING);
 	  c
+  }
+
+}
+
+fn accept_press(state: &'_ MainLayout) -> Option<Message> {
+  if state.is_config_changed {
+      Some(Message::AcceptNewSettings)
+  }
+  else {
+      None
+  }
+}
+
+fn reject_press(state: &'_ MainLayout) -> Option<Message>{
+  if state.is_config_changed {
+      Some(Message::RejectNewSettings)
+  }
+  else {
+      None
   }
 }

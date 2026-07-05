@@ -6,6 +6,7 @@ use crate::structs::{WebPage, WindowSizes};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Message {
 	Nothing,
+	NothingSafe,
 	CurrentTesat,
 	RefreshData,
 	AddItem(osrs::DataHolder),
@@ -57,6 +58,8 @@ pub enum Message {
 	ConfigChangeResolutionNew(WindowSizes),
   ConfigChangeTheme(Theme),
   OpenExplorer(String),
+  AcceptNewSettings,
+  RejectNewSettings,
 	
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
@@ -78,7 +81,7 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 			state.create_combo_box_data();
 			state.calculate_best_alchemy();
 		}
-		
+
 		Message::EventOccurred(_event) => {
 			// Add something here later
 		}
@@ -122,7 +125,7 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 		}
 		
 		Message::ChangePage(page) => {
-			return state.update_page(page);
+		  state.update_page(page);
 		}
 		
 		Message::ComboNewFilter(filter) => {
@@ -455,19 +458,26 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 		}
 		
 		Message::ConfigChangeResolutionWidth(x) => {
-			if RULE.is_match(&x) { state.extra_string_1 = x; }
+			if RULE.is_match(&x) { 
+          state.extra_string_1 = x;
+          state.is_config_changed = true;
+      }
 		}	
 		
 		Message::ConfigChangeResolutionHeight(y) => {
-			if RULE.is_match(&y) { state.extra_string_2 = y; }
+			if RULE.is_match(&y) { 
+          state.extra_string_2 = y; 
+          state.is_config_changed = true;
+      }
 		}
 
     Message::ConfigChangeResolutionNew(res) => {
         state.config_settings.new_resolution = res;
+        state.is_config_changed = true;
     }
 
     Message::ConfigChangeTheme(theme) => {
-        log_mess!["{:?}", theme];
+        state.config_settings.set_theme(Some(theme)); 
     }
 
 		Message::OpenExplorer(path) => {
@@ -476,6 +486,16 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 				log_err!["Error while openning path: {}", err];
 			}
 		}
+
+    Message::AcceptNewSettings => {
+        state.is_config_changed = false;
+        return state.apply_new_settings(true)
+    }
+
+    Message::RejectNewSettings => {
+        state.is_config_changed = false;
+        state.reset_settings();
+    }
 		
 		Message::CalcEnableDelMode => {
 			state.extra_bool = true;
@@ -550,6 +570,10 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
       if webbrowser::open(page.get_url()).is_err() {
         log_mess!("Cannot open web page");
       }
+    }
+
+    Message::NothingSafe => {
+        log_mess!("Nothing");
     }
 
 		_ => {

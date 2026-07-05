@@ -1,4 +1,4 @@
-//#![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 
 use iced::{Element, Center, Size, Pixels, Theme, Subscription, Task};
 use iced::widget::{button, column, row, text, space, container, combo_box, stack, center};
@@ -61,6 +61,7 @@ pub struct MainLayout {
 	pub config_curr_page: ConfigPages,
 	pub config_settings: ConfigSettings,
   pub config_window_combo_data: combo_box::State<structs::WindowSizes>,
+  pub is_config_changed: bool,
 
 	pub extra_string: String, // In Calc => recipe label, Alch => max price temp value
 	pub extra_string_1: String, // Alch => min price temp value,
@@ -94,6 +95,14 @@ impl MainLayout {
 				vec![]
 			}
 		};
+    let conf_loaded = match files::load_config() {
+			Ok(v) => v,
+			Err(err) => {
+				log_err!("Cannot get Config data. {}", err.to_string());
+				ConfigSettings::default()
+			}
+    };
+
 		let mut layout = MainLayout {
 			plotter: ItemViewPlot::default(),
 			
@@ -125,8 +134,9 @@ impl MainLayout {
 			calc_price_multi: 1,
 			
 			config_curr_page: ConfigPages::AppSettings,
-			config_settings: ConfigSettings::default(),
+			config_settings: conf_loaded,
 		  config_window_combo_data: combo_box::State::new(WindowSizes::all()),
+      is_config_changed: false,
 
 			extra_string: String::new(),
 			extra_string_1: String::new(),
@@ -138,6 +148,7 @@ impl MainLayout {
 		};
 		let _ = layout.update(Message::RefreshData);
 		log_mess!("{:#?}", &layout.calc_saved_recipes);
+    let _ = layout.apply_new_settings(false);
 		layout
 	}
 	
@@ -267,17 +278,24 @@ impl MainLayout {
 		message::update(self, message)
     }
 	
-	fn update_page(&mut self, page: AppPages) -> Task<Message> {
-		let mut task_to_ret = Task::none();
-		if self.current_page == AppPages::Config {
-			task_to_ret = match self.config_change_changes() {
-				Ok(t) => t,
-				Err(err) => {
-					log_err!["Error while saving config settings: {}", err];
-					Task::none()
-				}
-			};
-		}
+    pub fn apply_new_settings(&mut self, save_config: bool) -> Task<Message> {
+        let mut task_to_ret = Task::none();
+        if self.current_page == AppPages::Config {
+          task_to_ret = match self.config_change_changes() {
+            Ok(t) => t,
+            Err(err) => {
+              log_err!["Error while saving config settings: {}", err];
+              Task::none()
+            }
+          };
+        }
+        if save_config {
+            files::save_config(&self.config_settings).unwrap();
+        }
+        task_to_ret
+    }
+
+	fn update_page(&mut self, page: AppPages) {
 		match page {
 			AppPages::Alchemy => {
 				self.calculate_best_alchemy();
@@ -325,9 +343,12 @@ impl MainLayout {
 		self.current_page = page;
 		self.popup_ready = false;
 		log_mess!("{}", self.current_page.return_current_page_info());
-		return task_to_ret;
 	}
-	
+
+    pub fn reset_settings(&mut self) {
+
+    }
+
 	fn config_change_changes(&mut self) -> Result<Task<Message>, String> {
 		let app_interval = match self.extra_string.parse::<usize>() {
 			Ok(i) => {
@@ -335,7 +356,7 @@ impl MainLayout {
 			}
 			Err(err) => {
 				log_err![err];
-				60 // DEFAULT VALUE HERE!!!!! 
+				ConfigSettings::default_update_interval() 
 			} 
 		};
 		let width = match self.extra_string_1.parse::<usize>() {
@@ -344,7 +365,7 @@ impl MainLayout {
 			}
 			Err(err) => {
 				log_err![err];
-				1280 // DEFAULT VALUE HERE!!!!! 
+				ConfigSettings::default_resolution().0 as usize  
 			} 
 		};
 		let height = match self.extra_string_2.parse::<usize>() {
@@ -353,7 +374,7 @@ impl MainLayout {
 			}
 			Err(err) => {
 				log_err![err];
-				720 // DEFAULT VALUE HERE!!!!! 
+				ConfigSettings::default_resolution().1 as usize  
 			} 
 		};
 		self.config_settings.app_update_interval = app_interval;
@@ -480,7 +501,8 @@ impl MainLayout {
 	}
 	
 	fn create_combo_box_data(&mut self) {
-		let new_vec = self.create_filtered_vec(&self.combo_current_filter_item_view);
+		let mut new_vec = self.create_filtered_vec(&self.combo_current_filter_item_view);
+    new_vec.push(osrs::DataHolder::bond_holder());
 		self.combo_data = combo_box::State::new(new_vec);
 	}
 	
@@ -672,11 +694,23 @@ fn main() -> iced::Result<> {
 	if let Err(err) = files::setup_logger() { return Err(iced::Error::ExecutorCreationFailed(err)) }; // Good enough for now, I believe more Errors should be added to iced::Error 
 	log_mess!["INIT APP"];
 	
+  
+  let conf_loaded = match files::load_config() {
+    Ok(v) => v,
+    Err(err) => {
+      log_err!("Cannot get Config data. {}", err.to_string());
+      ConfigSettings::default()
+    }
+  };
+
+  let mut icon_path = std::path::PathBuf::new();
+  icon_path.push("img");
+  icon_path.push("icon.png");
 	let mut window_settings = iced::window::Settings::default();
 	window_settings.min_size = Some(Size::new(1280.0,720.0));
-	window_settings.size = Size::new(1280.0,720.0);
+	window_settings.size = conf_loaded.resolution();
 	window_settings.resizable = false;
-
+  window_settings.icon = iced::window::icon::from_file(icon_path).ok();
 
 	let app = iced::application(MainLayout::default, MainLayout::update, MainLayout::view)
 		.window(window_settings)

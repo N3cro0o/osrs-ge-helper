@@ -86,6 +86,20 @@ pub struct TimeseriesItemData {
 }
 
 impl DataHolder {
+  pub fn bond_holder() -> Self {
+      DataHolder{
+          name: "Old school bond".to_string(),
+          icon: "".to_string(),
+          examine: "This bond can be redeemed for membership.".to_string(),
+          id: 13190,
+          members: false,
+          lowalch: None,
+          limit: None,
+          value: None,
+          highalch: None
+      }
+  }
+
 	pub fn name(&self) -> String {
 		self.name.clone()
 	}

@@ -2,11 +2,11 @@ use std::io::{self, Error, ErrorKind, Write, Read};
 use std::{path, fs};
 use serde::{Serialize, Deserialize};
 
-use crate::structs::RecipeHolder;
+use crate::structs::{RecipeHolder, ConfigSettings};
 use crate::osrs;
 
 use super::{check_dir, create_dir};
-use super::{DATA_DIR, RECIPES_DIR, FAVDATA_DIR, ITEM_FILE, ALCH_FILE};
+use super::{DATA_DIR, RECIPES_DIR, FAVDATA_DIR, ITEM_FILE, ALCH_FILE, CONFIG_DIR, CONFIG_FILE};
 
 #[derive(Serialize, Deserialize)]
 struct Wrapper<T: std::clone::Clone> {
@@ -71,6 +71,23 @@ pub fn save_alchemy(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
 	let mut stream = io::BufWriter::new(file);
 	let wrapper = Wrapper::from(data);
 	let xml_data = match serde_xml_rs::to_string(&wrapper) {
+		Ok(string) => string,
+		Err(err) => return Err(Error::new(ErrorKind::Other, err)),
+	};
+	stream.write(xml_data.as_bytes())?;
+	Ok(())
+}
+
+pub fn save_config(data: &ConfigSettings) -> io::Result<()>{
+	let mut path = get_local_data_dir()?;
+	path.push(CONFIG_DIR);
+	if !check_dir(&path) {
+		create_dir(&path)?;
+	}
+	path.push(CONFIG_FILE);
+	let file = fs::OpenOptions::new().write(true).truncate(true).create(true).open(&path)?;
+	let mut stream = io::BufWriter::new(file);
+	let xml_data = match serde_xml_rs::to_string(data) {
 		Ok(string) => string,
 		Err(err) => return Err(Error::new(ErrorKind::Other, err)),
 	};
@@ -161,6 +178,23 @@ pub fn load_recipe(id: usize) -> io::Result<RecipeHolder> {
 		Err(err) => return Err(Error::new(ErrorKind::Other, format!("Cannot deserialize RecipeHolder struct. {err}"))),
 	};
 	Ok(data)
+}
+
+pub fn load_config() -> io::Result<ConfigSettings>{
+	let mut path = get_local_data_dir()?;
+	path.push(CONFIG_DIR);
+	if !check_dir(&path) {
+		return Err(Error::new(ErrorKind::Other, "Config path doesn't exist"));
+	}
+	path.push(CONFIG_FILE);
+	let mut file = fs::OpenOptions::new().read(true).open(&path)?;
+	let mut wrapper_str = String::new();
+	let _ = file.read_to_string(&mut wrapper_str)?;
+	let wrapper: ConfigSettings = match serde_xml_rs::from_str(&wrapper_str) {
+		Ok(d) => d,
+		Err(err) => return Err(Error::new(ErrorKind::Other, format!("Cannot deserialize ConfigSettings struct. {err}"))),
+	};
+	Ok(wrapper)
 }
 
 pub fn delete_recipe(id: usize) -> io::Result<()> {

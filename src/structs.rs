@@ -1,7 +1,7 @@
 use chrono::{TimeZone, Local};
 use serde::{Serialize, Deserialize};
 
-use iced::{Element, Length};
+use iced::{Element, Length, Theme};
 use iced::widget::{text, center, container};
 
 use plotters::{coord::Shift, prelude::*};
@@ -507,10 +507,30 @@ impl ConfigSettings {
       theme: None,
 		}
 	}
+
+  pub fn default_resolution() -> (f32, f32) {
+      (1280.0, 720.0)
+  }
+
+  pub fn default_update_interval() -> usize {
+      60
+  }
 	
 	pub fn resolution(&self) -> iced::Size {
 		iced::Size::new(self.new_resolution.width.into(), self.new_resolution.height.into())
 	}
+
+  pub fn set_theme(&mut self, theme: Option<Theme>) {
+    match theme {
+        Some(t) => {
+            let i: isize = Theme::ALL.iter().position(|x| x == &t).unwrap() as isize;
+            self.theme = Some(i);
+        }
+        None => {
+            self.theme = None;
+        }
+    }
+  }
 }
 
 impl Default for ConfigSettings {

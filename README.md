@@ -23,17 +23,18 @@ using current GE prices. Users can use already created recipes as resources and 
 ## Todo
 
 * Config
-  * Credits
-  * Refresh system offset ????
-  * Other themes
+  * ~~Credits~~
+  * ~~Refresh system offset for fetching new data~~
+  * ~~Other themes~~
   * Check for new updates
   * Add sound pings options
-* App image
-* Theme change
-  * Invert current colours
-  * Use secondary colours for elements
+  * ~~Add better saving system~~
+  * ~~Save options properly~~
+* ~~App image~~
 * Add button images
   * Member item filter
   * Save / favourite
 * Write docs comments
 * Localization
+* ItemView
+  * ~~Add bond view~~

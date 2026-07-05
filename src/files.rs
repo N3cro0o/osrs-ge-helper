@@ -6,16 +6,18 @@ use std::io;
 use std::{path, fs};
 use std::sync::OnceLock;
 
-use crate::structs::RecipeHolder;
+use crate::structs::{RecipeHolder, ConfigSettings};
 use crate::osrs;
 
 pub const DATA_DIR: &str = "OSRE-calculator";
 pub const RECIPES_DIR: &str = "recipes";
 pub const FAVDATA_DIR: &str = "favdata";
 pub const LOGGER_DIR: &str = "logs";
+pub const CONFIG_DIR: &str = "conf";
 
 pub const ITEM_FILE: &str = "view_data.xml";
 pub const ALCH_FILE: &str = "alch_data.xml";
+pub const CONFIG_FILE: &str = "konfitura.xml";
 
 static LOG_FILE_NAME: OnceLock<String> = OnceLock::new();
 
@@ -86,4 +88,12 @@ pub fn delete_item_view() -> io::Result<()> {
 
 pub fn delete_alchemy() -> io::Result<()> {
 	save::delete_alchemy()	
+}
+
+pub fn save_config(data: &ConfigSettings) -> io::Result<()>{
+    save::save_config(data)
+}
+
+pub fn load_config() -> io::Result<ConfigSettings>{
+    save::load_config()
 }
