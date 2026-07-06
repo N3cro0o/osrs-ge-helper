@@ -14,7 +14,9 @@ pub struct DataHolder {
 	lowalch: Option<usize>,
 	limit: Option<u32>,
 	value: Option<usize>,
-	highalch: Option<usize>
+	highalch: Option<usize>,
+  #[serde(skip)]
+  pub price_threshold: Option<usize>,
 }
 
 #[derive(Default, Serialize, Deserialize, Debug, Clone, Copy)]
@@ -96,7 +98,8 @@ impl DataHolder {
           lowalch: None,
           limit: None,
           value: None,
-          highalch: None
+          highalch: None,
+          price_threshold: None,
       }
   }
 

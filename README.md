@@ -26,7 +26,7 @@ using current GE prices. Users can use already created recipes as resources and 
   * ~~Credits~~
   * ~~Refresh system offset for fetching new data~~
   * ~~Other themes~~
-  * Check for new updates
+  * ~~Check for new updates~~
   * Add sound pings options
   * ~~Add better saving system~~
   * ~~Save options properly~~
@@ -35,6 +35,9 @@ using current GE prices. Users can use already created recipes as resources and 
   * Member item filter
   * Save / favourite
 * Write docs comments
+
+### Optional
+
 * Localization
 * ItemView
   * ~~Add bond view~~

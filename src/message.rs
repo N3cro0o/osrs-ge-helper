@@ -60,7 +60,8 @@ pub enum Message {
   OpenExplorer(String),
   AcceptNewSettings,
   RejectNewSettings,
-	
+	RickTelemetryToggle(bool),
+
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
 	ShowPopup,
@@ -568,6 +569,12 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 	
     Message::OpenWebPage(page) => {
       if webbrowser::open(page.get_url()).is_err() {
+        log_mess!("Cannot open web page");
+      }
+    }
+
+    Message::RickTelemetryToggle(_b) => {
+      if webbrowser::open(WebPage::Telemetry.get_url()).is_err() {
         log_mess!("Cannot open web page");
       }
     }

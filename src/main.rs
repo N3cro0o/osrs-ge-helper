@@ -62,6 +62,7 @@ pub struct MainLayout {
 	pub config_settings: ConfigSettings,
   pub config_window_combo_data: combo_box::State<structs::WindowSizes>,
   pub is_config_changed: bool,
+  pub is_new_version: bool,
 
 	pub extra_string: String, // In Calc => recipe label, Alch => max price temp value
 	pub extra_string_1: String, // Alch => min price temp value,
@@ -137,6 +138,7 @@ impl MainLayout {
 			config_settings: conf_loaded,
 		  config_window_combo_data: combo_box::State::new(WindowSizes::all()),
       is_config_changed: false,
+      is_new_version: false,
 
 			extra_string: String::new(),
 			extra_string_1: String::new(),
@@ -576,6 +578,7 @@ impl MainLayout {
 			self.refresh_latest_data()?;
 			self.refresh_plotter_data()?;
 		}
+    self.check_update();
 		result
 	}
 	
@@ -681,6 +684,18 @@ pub fn get_alch_fav_vec(&self) -> Vec<String> {
         None => Theme::CatppuccinFrappe,
     })
 	}
+
+  fn check_update(&mut self) {
+    let response = self.fetch_get_data("https://github.com/N3cro0o/osrs-ge-helper/releases/latest");
+    if let Ok(resp) = response {
+        if resp.status().is_success() {
+          let body = resp.text().unwrap();
+          let o = body.lines()
+              .find(|l| l.contains(env!("CARGO_PKG_VERSION")));
+          self.is_new_version = o.is_none();
+        }
+    }
+  }
 }
 
 impl Default for MainLayout {

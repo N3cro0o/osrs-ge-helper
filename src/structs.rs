@@ -104,6 +104,8 @@ pub enum WebPage {
   Itch,
   Twitter,
   Github,
+  GithubLatest,
+  Telemetry,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -545,6 +547,8 @@ impl WebPage {
           WebPage::Itch => "https://n3cro0odev.itch.io",
           WebPage::Twitter => "https://x.com/N3cro0oDev",
           WebPage::Github => "https://github.com/N3cro0o",
+          WebPage::GithubLatest => "https://github.com/N3cro0o/osrs-ge-helper/releases/latest",
+          WebPage::Telemetry => "https://youtu.be/dQw4w9WgXcQ",
       }
   }
 }

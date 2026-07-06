@@ -35,14 +35,14 @@ impl structs::AppPages {
 								if state.config_curr_page == ConfigPages::Customization { button::danger }
 								else { button::primary })
 							.width(Length::Fill),
-						// button("Notifcations")
-						// 	.on_press_maybe(
-						// 		(state.config_curr_page != ConfigPages::PingSettings)
-						// 			.then_some(Message::ChangeConfigPage(ConfigPages::PingSettings)))
-						// 	.style(
-						// 		if state.config_curr_page == ConfigPages::PingSettings { button::danger }
-						// 		else { button::primary })
-						// 	.width(Length::Fill),
+						 button("Notifications")
+						 	.on_press_maybe(
+						 		(state.config_curr_page != ConfigPages::PingSettings)
+						 			.then_some(Message::ChangeConfigPage(ConfigPages::PingSettings)))
+						 	.style(
+						 		if state.config_curr_page == ConfigPages::PingSettings { button::danger }
+						 		else { button::primary })
+						 	.width(Length::Fill),
 						space::vertical(),
             button("Accept")
                 .style(button::success)
@@ -79,14 +79,21 @@ impl structs::AppPages {
 			ConfigPages::Credits => self.credits_body(state),
 		};
 		
-		let update_text = Some(text("New version available! To myself -> HIDE THIS"));
+		let update_button;
+    if state.is_new_version {
+        update_button = Some(button("New version available. Click here to download").style(button::text)
+            .on_press(Message::OpenWebPage(WebPage::GithubLatest)));
+    }  
+    else {
+        update_button = None;
+    }
 		
 		let main = center(row![
 				space::horizontal().width(Length::FillPortion(1)),
 				body.width(Length::FillPortion(4)),
 				space::horizontal().width(Length::FillPortion(1)),
 			]);
-		center(column![main, update_text].padding(APP_PADDING)).style(container::rounded_box).into()
+		center(column![main, update_button].padding(APP_PADDING)).style(container::rounded_box).into()
 	}
 	
 	fn app_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message>  {
@@ -165,16 +172,24 @@ impl structs::AppPages {
 	
 	fn ping_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
 		column![
-				text("Nothing to see here... for now"),
+		    iced::widget::toggler(false)
+            .label("Enable notifications"),
 			]
 			.spacing(APP_SPACING)
+      .align_x(Center)
 	}
 	
 	fn customization_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message> {
 		column![
+        text("Select app theme"),
 		    pick_list(Theme::ALL, state.theme(), Message::ConfigChangeTheme,)
             .placeholder("Theme"),
+        space::vertical().height(Length::Fixed(50.0)),
+        iced::widget::toggler(false)
+            .label("Allow sending telemetry data")
+            .on_toggle(Message::RickTelemetryToggle)
       ]
+      .align_x(Center)
 			.spacing(APP_SPACING)
 	}
 	
