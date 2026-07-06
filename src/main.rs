@@ -14,6 +14,7 @@ pub mod message;
 pub mod osrs;
 pub mod structs;
 pub mod files;
+pub mod os;
 
 use message::Message;
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot, WindowSizes};
@@ -149,9 +150,11 @@ impl MainLayout {
 			extra_bool_2: false,
 		};
 		let _ = layout.update(Message::RefreshData);
-		log_mess!("{:#?}", &layout.calc_saved_recipes);
+    layout.select_new_item(&osrs::DataHolder::bond_holder());
+    let _ = layout.get_timeseries_data(&osrs::DataHolder::bond_holder());
     let _ = layout.apply_new_settings(false);
-		layout
+		log_mess!["Layout initialized"];
+    layout
 	}
 	
 	fn title(&self) -> String {
@@ -348,7 +351,9 @@ impl MainLayout {
 	}
 
     pub fn reset_settings(&mut self) {
-
+      let curr_res = WindowSizes::from_size(self.config_settings.resolution.into());
+      self.config_settings.new_resolution = curr_res;
+      self.extra_string = self.config_settings.app_update_interval.to_string()
     }
 
 	fn config_change_changes(&mut self) -> Result<Task<Message>, String> {

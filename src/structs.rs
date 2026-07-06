@@ -93,6 +93,7 @@ pub enum ConfigPages {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigSettings {
 	pub resolution: (f32, f32),
+  #[serde(skip)]
   pub new_resolution: WindowSizes,
 	pub resize: bool,
   pub theme: Option<isize>,  // Positive -> predefined, Negative -> custom, None -> default
@@ -562,6 +563,11 @@ impl WindowSizes {
             WindowSizes {width: 1920, height: 1080},
             WindowSizes {width: 1920, height: 1200},
         ]
+    }
+
+    pub fn from_size(size: iced::Size) -> WindowSizes {
+        WindowSizes::all().into_iter().find(|ws| ws.width as f32 == size.width || ws.height as f32 == size.height)
+            .unwrap_or_default().clone()
     }
 }
 

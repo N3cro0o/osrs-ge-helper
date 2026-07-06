@@ -92,6 +92,7 @@ pub fn save_config(data: &ConfigSettings) -> io::Result<()>{
 		Err(err) => return Err(Error::new(ErrorKind::Other, err)),
 	};
 	stream.write(xml_data.as_bytes())?;
+  crate::log_mess!["Config file saved!"];
 	Ok(())
 }
 

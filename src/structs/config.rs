@@ -146,7 +146,7 @@ impl structs::AppPages {
         Some(&state.config_settings.new_resolution),
         Message::ConfigChangeResolutionNew,
         )
-        .menu_height(Length::Fixed(COMBOBOX_MENU_HEIGHT))
+        .menu_height(Length::Fixed(COMBOBOX_MENU_HEIGHT / 2.0))
 			  .width(400);
 
     column![
