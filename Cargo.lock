@@ -3214,6 +3214,7 @@ dependencies = [
  "serde-xml-rs",
  "serde_json",
  "webbrowser",
+ "windows 0.62.2",
 ]
 
 [[package]]

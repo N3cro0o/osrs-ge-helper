@@ -58,6 +58,7 @@ pub enum Message {
 	ConfigChangeResolutionNew(WindowSizes),
   ConfigChangeTheme(Theme),
   OpenExplorer(String),
+  ConfigChangeAutoStartup(bool),
   AcceptNewSettings,
   RejectNewSettings,
 	RickTelemetryToggle(bool),
@@ -479,6 +480,10 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 
     Message::ConfigChangeTheme(theme) => {
         state.config_settings.set_theme(Some(theme)); 
+    }
+
+    Message::ConfigChangeAutoStartup(check) => {
+        crate::os::toggle_startup_on_boot(check);
     }
 
 		Message::OpenExplorer(path) => {

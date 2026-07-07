@@ -1,5 +1,5 @@
 use iced::{Element, Length, Center, Theme};
-use iced::widget::{column, row, text, center, pick_list, space, container, button, text_input, Column, combo_box};
+use iced::widget::{column, row, text, center, pick_list, space, container, button, text_input, Column, combo_box, toggler};
 
 use crate::{Message, MainLayout};
 use crate::{APP_PADDING, APP_SPACING, IMAGE_SIZE_WIDTH, COMBOBOX_MENU_HEIGHT};
@@ -115,6 +115,9 @@ impl structs::AppPages {
 						text("sec"),
 					].spacing(APP_SPACING)
 					.align_y(iced::Center),
+          toggler(false)
+              .on_toggle(Message::ConfigChangeAutoStartup)
+              .label("Open app on system boot"),
 				row![
 						text("Local data directory:"),
 						space::horizontal(),
@@ -172,7 +175,7 @@ impl structs::AppPages {
 	
 	fn ping_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
 		column![
-		    iced::widget::toggler(false)
+		    toggler(false)
             .label("Enable notifications"),
 			]
 			.spacing(APP_SPACING)
@@ -185,7 +188,7 @@ impl structs::AppPages {
 		    pick_list(Theme::ALL, state.theme(), Message::ConfigChangeTheme,)
             .placeholder("Theme"),
         space::vertical().height(Length::Fixed(50.0)),
-        iced::widget::toggler(false)
+        toggler(false)
             .label("Allow sending telemetry data")
             .on_toggle(Message::RickTelemetryToggle)
       ]

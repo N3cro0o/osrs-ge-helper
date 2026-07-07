@@ -22,7 +22,7 @@ macro_rules! log_mess {
 		}
 	};
 	
-	($fmt:expr, $mesg:expr) => {
+	($fmt:expr, $($mesg:expr),+) => {
 		{
 			use crate::files::log_message_str;
 			let _ = log_message_str(format!("{} | {} {}:{} - {}",
@@ -30,7 +30,7 @@ macro_rules! log_mess {
 				std::file![], 
 				std::line![], 
 				std::column![], 
-				format!($fmt, $mesg)));
+				format!($fmt, $($mesg),+)));
 		}
 	};
 }
@@ -49,7 +49,7 @@ macro_rules! log_err {
 		}
 	};
 	
-	($fmt:expr, $mesg:expr) => {
+	($fmt:expr, $($mesg:expr),+) => {
 		{
 			use crate::files::log_error_str;
 			let _ = log_error_str(format!("{} | {} {}:{} - {}",
@@ -57,7 +57,7 @@ macro_rules! log_err {
 				std::file![], 
 				std::line![], 
 				std::column![], 
-				format!($fmt, $mesg)));
+				format!($fmt, $($mesg),+)));
 		}
 	};
 }

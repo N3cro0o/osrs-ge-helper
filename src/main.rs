@@ -714,7 +714,6 @@ fn main() -> iced::Result<> {
 	if let Err(err) = files::setup_logger() { return Err(iced::Error::ExecutorCreationFailed(err)) }; // Good enough for now, I believe more Errors should be added to iced::Error 
 	log_mess!["INIT APP"];
 	
-  
   let conf_loaded = match files::load_config() {
     Ok(v) => v,
     Err(err) => {
