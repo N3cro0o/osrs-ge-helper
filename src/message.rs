@@ -479,11 +479,17 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
     }
 
     Message::ConfigChangeTheme(theme) => {
-        state.config_settings.set_theme(Some(theme)); 
+        state.config_settings.set_theme(Some(theme));
+        state.is_config_changed = true;
     }
 
     Message::ConfigChangeAutoStartup(check) => {
-        crate::os::toggle_startup_on_boot(check);
+        if let Err(err) = crate::os::toggle_startup_on_boot(check) {
+            log_err!["Error while toggling autostart: {}", err];
+            return Task::none(); 
+        }
+        state.config_settings.autostart = check;
+        state.is_config_changed = true;
     }
 
 		Message::OpenExplorer(path) => {

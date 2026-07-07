@@ -115,7 +115,7 @@ impl structs::AppPages {
 						text("sec"),
 					].spacing(APP_SPACING)
 					.align_y(iced::Center),
-          toggler(false)
+          toggler(state.config_settings.autostart)
               .on_toggle(Message::ConfigChangeAutoStartup)
               .label("Open app on system boot"),
 				row![

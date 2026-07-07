@@ -98,6 +98,7 @@ pub struct ConfigSettings {
 	pub resize: bool,
   pub theme: Option<isize>,  // Positive -> predefined, Negative -> custom, None -> default
 	pub app_update_interval: usize,
+  pub autostart: bool,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -508,6 +509,7 @@ impl ConfigSettings {
 			resize: false,
 			app_update_interval: 60,
       theme: None,
+      autostart: false,
 		}
 	}
 

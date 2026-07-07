@@ -1,7 +1,7 @@
 use std::path::PathBuf;
-use std::fs::canonicalize;
+use std::fs::{canonicalize, remove_file};
 
-use crate::{log_mess, log_err};
+use crate::log_mess;
 
 #[derive(Debug)]
 pub enum OsError {
@@ -18,10 +18,15 @@ impl From<std::io::Error> for OsError {
 
 impl std::fmt::Display for OsError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let string = "XD";
-        write!(f, "{}", string)
+        match self {
+            OsError::IoError(s) => { write!(f, "Input/Output Error - {}", s) }
+            OsError::WinError(s) => { write!(f, "Windows related Error - {}", s) }
+            OsError::Other(s) => { write!(f, "Other kind of Error - {}", s) }
+        }
     } 
 }
+
+impl std::error::Error for OsError {}
 
 #[cfg(target_os = "windows")]
 pub fn toggle_startup_on_boot(check: bool) -> Result<(), OsError> {
@@ -36,8 +41,12 @@ pub fn toggle_startup_on_boot(check: bool) -> Result<(), OsError> {
     };
     autostart_path.extend(["Microsoft", "Windows", "Start Menu", "Programs", "Startup", "osrs-helper.lnk"]);
     log_mess!["Helper path: {},\nAutostart path {}", app_path.to_str().unwrap(), autostart_path.to_str().unwrap()];
-    create_shell_link(app_path, autostart_path);
-    Ok(())
+    if check {
+        create_shell_link(app_path, autostart_path)
+    }
+    else {
+        remove_shell_link(autostart_path)
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -45,6 +54,12 @@ fn create_shell_link(app_path: PathBuf, autostart_path: PathBuf) -> Result<(), O
     use windows::Win32::System::Com::*;
     use windows::Win32::UI::Shell::*;
     use windows::core::*;
+
+    match autostart_path.try_exists() {
+        Ok(b) => { log_mess!["Shell link exists? {}", b]; if b { return Ok(()); } }
+        Err(err) => { return Err(OsError::from(err)); }
+    }
+
     unsafe {
         {
             log_mess!["Initializing COM"];
@@ -77,6 +92,19 @@ fn create_shell_link(app_path: PathBuf, autostart_path: PathBuf) -> Result<(), O
         }
         CoUninitialize();
         log_mess!["COM done"];
+    }
+    Ok(())
+}
+
+fn remove_shell_link(autostart_path: PathBuf) -> Result<(), OsError> {
+    let shell_link_exists = match autostart_path.try_exists() {
+        Ok(b) => b,
+        Err(err) => { return Err(OsError::from(err)); }
+    };
+    if shell_link_exists {
+        if let Err(err) = remove_file(&autostart_path) {
+            return Err(OsError::from(err));
+        }
     }
     Ok(())
 }
