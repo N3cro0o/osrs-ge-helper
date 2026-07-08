@@ -15,6 +15,7 @@ pub mod osrs;
 pub mod structs;
 pub mod files;
 pub mod os;
+pub mod ping;
 
 use message::Message;
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot, WindowSizes};
@@ -48,7 +49,8 @@ pub struct MainLayout {
 	pub combo_current_filter_item_view: Option<SearchFilter>,
 	pub selected_item_timeseries_data: Option<osrs::TimeseriesData>,
 	pub selected_timeseries: osrs::Timeseries,
-	
+  pub selected_item_favourite: bool,
+
 	pub fav_items_alchemy: Vec<osrs::DataHolder>,
 	pub search_filter_alchemy: Option<SearchFilter>,
 	pub best_items_alchemy: Vec<(usize, isize)>,
@@ -83,7 +85,7 @@ impl MainLayout {
 				vec![]
 			}
 		};
-		let vec_item_view = match files::load_view_items () {
+		let vec_item_view = match files::load_view_items() {
 			Ok(v) => v,
 			Err(err) => {
 				log_err!("Cannot get ItemView data. {}", err.to_string());
@@ -104,7 +106,13 @@ impl MainLayout {
 				ConfigSettings::default()
 			}
     };
-
+    let autostart_check = os::check_autostart();
+    if conf_loaded.autostart != autostart_check {
+        log_err!["Autostart data is not the same. Fixing..."];
+        if let Err(err) = os::toggle_startup_on_boot(conf_loaded.autostart) {
+            log_err!["Error while toggling autostart: {}", err];
+        }
+    }
 		let mut layout = MainLayout {
 			plotter: ItemViewPlot::default(),
 			
@@ -124,7 +132,8 @@ impl MainLayout {
 			combo_current_filter_item_view: None,
 			selected_item_timeseries_data: None,
 			selected_timeseries: osrs::Timeseries::FiveMin,
-			
+	    selected_item_favourite: false,
+
 			fav_items_alchemy: vec_alch,
 			search_filter_alchemy: Some(SearchFilter::default()),
 			best_items_alchemy: vec![],
@@ -339,9 +348,9 @@ impl MainLayout {
 				self.extra_string = self.config_settings.app_update_interval.to_string();
 				self.extra_string_1 = self.config_settings.resolution.0.to_string();
 				self.extra_string_2 = self.config_settings.resolution.1.to_string();
-				self.extra_string_3.clear();
+				self.extra_string_3.clear(); // Used in ItemView!
 				self.plotter.reset_data();
-				self.extra_bool = false;
+				self.extra_bool = self.config_settings.autostart;
 				self.extra_bool_1 = false;
 			}
 		}
@@ -384,8 +393,12 @@ impl MainLayout {
 				ConfigSettings::default_resolution().1 as usize  
 			} 
 		};
+    if let Err(err) = os::toggle_startup_on_boot(self.extra_bool) {
+        log_err!["Error while toggling autostart: {}", err];
+    }
 		self.config_settings.app_update_interval = app_interval;
 		self.config_settings.resolution = (width as f32, height as f32);
+    self.config_settings.autostart = self.extra_bool;
 		let res = self.config_settings.resolution();
 		Ok(iced::window::latest().and_then(move |id| iced::window::resize::<Message>(id, res)))
 	}
@@ -552,6 +565,17 @@ impl MainLayout {
 			Ok(data) => {
 				self.last_item_ge = Some(data);
 				self.last_item = Some(item.clone());
+        self.selected_item_favourite = self.check_item_favourite(item);
+        if self.selected_item_favourite {
+            match self.get_price_threshold() {
+                Some(val) => { self.extra_string_3 = val.to_string(); }
+                None => { self.extra_string_3 = String::new(); }
+            }
+        }
+        // Da plan
+        // check_item_favourite check for DataHolder item being faved (duh)
+        // and if it is, here or in another func get price from self.saved_items_item_view and save it in self.extra_string_3
+        // ez
 			}
 			Err(err) => {
 				log_err!("{}", err);
@@ -559,6 +583,30 @@ impl MainLayout {
 		}
 	}
 	
+    fn check_item_favourite(&self, data: &osrs::DataHolder) -> bool {
+        self.saved_items_item_view.iter().find(|item| *item == data).is_some()
+    }
+
+    fn get_price_threshold(&self) -> Option<usize> {
+        let id = self.saved_items_item_view.iter().position(|item| *item == self.last_item.clone().unwrap());
+        if let Some(item_id) = id {
+            self.saved_items_item_view[item_id].price_threshold.clone()
+        }
+        else {
+            None
+        }
+    }
+
+    fn update_price_thershold_for_current_item(&mut self, value: usize) {
+        let id = self.saved_items_item_view.iter().position(|item| *item == self.last_item.clone().unwrap());
+        if let Some(item_id) = id {
+            self.saved_items_item_view[item_id].price_threshold = Some(value);
+            if let Err(err) = files::save_view_items(&self.saved_items_item_view) {
+              log_err!("{}", err);
+            }
+        }
+    }
+
 	fn get_price_from_id(&self, id: usize) -> Result<osrs::GEData, String> {
 		// let response = match self.fetch_get_data(&format!("https://prices.runescape.wiki/api/v1/osrs/latest?id={}", id)) {
 			// Ok(data) => data,
@@ -584,6 +632,7 @@ impl MainLayout {
 			self.refresh_plotter_data()?;
 		}
     self.check_update();
+    self.check_item_view_prices();
 		result
 	}
 	
@@ -700,6 +749,17 @@ pub fn get_alch_fav_vec(&self) -> Vec<String> {
           self.is_new_version = o.is_none();
         }
     }
+  }
+
+  fn check_item_view_prices(&self) {
+      for item in self.saved_items_item_view.iter() {
+        if let None = item.price_threshold { continue; }
+        let thresh = item.price_threshold.unwrap();
+        let data = self.latest_ge_data.get_data_by_id(item.id).unwrap();
+        if data.buy_price().unwrap() < thresh {
+            ping::send_notification(&item.name, data.buy_price().unwrap());
+        }
+      }
   }
 }
 

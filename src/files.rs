@@ -16,6 +16,7 @@ pub const LOGGER_DIR: &str = "logs";
 pub const CONFIG_DIR: &str = "conf";
 
 pub const ITEM_FILE: &str = "view_data.xml";
+pub const THRES_FILE: &str = "view_data_thresholds.xml";
 pub const ALCH_FILE: &str = "alch_data.xml";
 pub const CONFIG_FILE: &str = "konfitura.xml";
 

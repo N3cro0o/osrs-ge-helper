@@ -115,9 +115,10 @@ impl structs::AppPages {
 						text("sec"),
 					].spacing(APP_SPACING)
 					.align_y(iced::Center),
-          toggler(state.config_settings.autostart)
-              .on_toggle(Message::ConfigChangeAutoStartup)
-              .label("Open app on system boot"),
+        toggler(state.extra_bool)
+          .on_toggle(Message::ConfigChangeAutoStartup)
+          .label("Open app on system boot"),
+        iced::widget::rule::horizontal(4),
 				row![
 						text("Local data directory:"),
 						space::horizontal(),

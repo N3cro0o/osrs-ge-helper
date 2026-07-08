@@ -30,14 +30,21 @@ using current GE prices. Users can use already created recipes as resources and 
   * Add sound pings options
   * ~~Add better saving system~~
   * ~~Save options properly~~
+  * Make ConfigView look better
 * ~~App image~~
 * Add button images
   * Member item filter
   * Save / favourite
 * Write docs comments
+* ~~Add ItemView notifications system~~
+* Notifications
+  * Add window icon pings (on toolbar)
+  * Add sound pings
 
 ### Optional
 
 * Localization
 * ItemView
   * ~~Add bond view~~
+* Notifications
+  * Add system notifications (the popup window on the side of the screen)

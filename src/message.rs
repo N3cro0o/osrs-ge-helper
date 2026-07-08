@@ -14,6 +14,7 @@ pub enum Message {
 	ChangePage(AppPages),
 	AddItemToSaved,
 	RemoveItemFromSaved,
+  UpdatePriceThershold,
 	ComboNewFilter(Option<SearchFilter>),
 	AlchNewFilter(Option<SearchFilter>),
 	OpenWiki,
@@ -65,6 +66,7 @@ pub enum Message {
 
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
+  ChangeExtraString3(String),
 	ShowPopup,
 	HidePopup,
 	ChangeConfigPage(ConfigPages),
@@ -120,6 +122,16 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 		Message::RemoveItemFromSaved => {
 			let _ = state.forget_current_item();
 		}
+
+    Message::UpdatePriceThershold => {
+        if RULE.is_match(&state.extra_string_3) {
+            let v: usize = state.extra_string_3.parse().unwrap();
+            state.update_price_thershold_for_current_item(v);
+        }
+        else {
+            log_err!["Given value is not a valid value: {}", state.extra_string_3];
+        }
+    }
 		
 		Message::SelectItem(item) => {
 			state.select_new_item(&item);
@@ -484,11 +496,7 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
     }
 
     Message::ConfigChangeAutoStartup(check) => {
-        if let Err(err) = crate::os::toggle_startup_on_boot(check) {
-            log_err!["Error while toggling autostart: {}", err];
-            return Task::none(); 
-        }
-        state.config_settings.autostart = check;
+        state.extra_bool = check;
         state.is_config_changed = true;
     }
 
@@ -519,6 +527,10 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 		
 		Message::ChangeExtraString(string) => {
 			state.extra_string = string;
+		}
+
+		Message::ChangeExtraString3(string) => {
+			state.extra_string_3 = string;
 		}
 		
 		Message::ResetItemView => {

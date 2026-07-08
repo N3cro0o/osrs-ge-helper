@@ -1,5 +1,5 @@
 use iced::{Element, Center, Length};
-use iced::widget::{button, column, row, text, center, space, container, combo_box};
+use iced::widget::{button, column, row, text, center, space, container, combo_box, text_input};
 use iced::alignment::Horizontal;
 
 use num_format::{Locale, ToFormattedString};
@@ -108,12 +108,16 @@ impl structs::AppPages {
 					})
 				.on_press(Message::ComboNewFilter(Some(new_member_filter)))
 		};
+    let fav_price_input = text_input("Input price", &state.extra_string_3)
+        .on_submit(Message::UpdatePriceThershold)
+        .on_input(Message::ChangeExtraString3);
 		
 		let search_row = center(
 				row![
 					combo,
 					member_button,
 					space::horizontal(),
+          if state.selected_item_favourite { Some(fav_price_input) } else { None },
 					save_button,
 					button("wiki")
 						.on_press(Message::OpenWiki),

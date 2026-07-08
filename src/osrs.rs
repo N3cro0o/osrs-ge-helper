@@ -19,6 +19,12 @@ pub struct DataHolder {
   pub price_threshold: Option<usize>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct DataThresholdHolder {
+    pub id: usize,
+    pub price_threshold: Option<usize>,
+}
+
 #[derive(Default, Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct GEData {
 	high: Option<usize>,
@@ -119,6 +125,10 @@ impl DataHolder {
 		);
 		tuple
 	}
+
+  pub fn value(&self) -> Option<usize> {
+      self.value.clone()
+  }
 	
 	pub fn check_filter(&self, filter: &Option<structs::SearchFilter>, price: usize, volume: usize, list: &Vec<Self>) -> bool {
 		if let Some(f) = filter {
@@ -145,6 +155,24 @@ impl DataHolder {
 			true
 		}
 	}
+}
+
+impl std::convert::Into<DataThresholdHolder> for DataHolder {
+    fn into(self) -> DataThresholdHolder {
+        DataThresholdHolder{
+            id: self.id,
+            price_threshold: self.price_threshold,
+        }
+    }
+}
+
+impl std::convert::Into<DataThresholdHolder> for &DataHolder {
+    fn into(self) -> DataThresholdHolder {
+        DataThresholdHolder{
+            id: self.id,
+            price_threshold: self.price_threshold,
+        }
+    }
 }
 
 impl fmt::Display for DataHolder {

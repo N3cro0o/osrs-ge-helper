@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::fs::{canonicalize, remove_file};
 
-use crate::log_mess;
+use crate::{log_mess, log_err};
 
 #[derive(Debug)]
 pub enum OsError {
@@ -107,4 +107,18 @@ fn remove_shell_link(autostart_path: PathBuf) -> Result<(), OsError> {
         }
     }
     Ok(())
+}
+
+pub fn check_autostart() -> bool {
+    check_target_autostart()
+}
+
+#[cfg(target_os = "windows")]
+fn check_target_autostart() -> bool {
+    let mut autostart_path = match dirs::data_dir() {
+        Some(path) => path,
+        None => { log_err!["cannot create data_dir path"]; return false; }
+    };
+    autostart_path.extend(["Microsoft", "Windows", "Start Menu", "Programs", "Startup", "osrs-helper.lnk"]);
+    autostart_path.try_exists().unwrap_or(false)
 }
