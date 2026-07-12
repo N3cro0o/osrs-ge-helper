@@ -19,6 +19,7 @@ pub enum Message {
 	AlchNewFilter(Option<SearchFilter>),
 	OpenWiki,
 	RefreshTick(Instant),
+  PingTick(Instant),
 	EventOccurred(Event),
 	ResetItemView,
 	ResetAlchemy,
@@ -60,6 +61,7 @@ pub enum Message {
   ConfigChangeTheme(Theme),
   OpenExplorer(String),
   ConfigChangeAutoStartup(bool),
+  ConfigToggleAllNotification(bool),
   AcceptNewSettings,
   RejectNewSettings,
 	RickTelemetryToggle(bool),
@@ -162,6 +164,12 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 			state.create_combo_box_data();
 			state.calculate_best_alchemy();
 		}
+
+    Message::PingTick(_now) => {
+        if let Some(t) = state.check_item_view_prices() {
+            return t;
+        }
+    }
 		
 		Message::AlchemyDecreaseOffset => {
 			if state.table_vec_offset != 0 {
@@ -497,6 +505,11 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 
     Message::ConfigChangeAutoStartup(check) => {
         state.extra_bool = check;
+        state.is_config_changed = true;
+    }
+
+    Message::ConfigToggleAllNotification(check) => {
+        state.extra_bool_1 = check;
         state.is_config_changed = true;
     }
 

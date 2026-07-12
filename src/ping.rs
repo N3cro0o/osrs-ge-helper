@@ -1,5 +1,10 @@
-use crate::log_mess;
+use iced::window::{UserAttention, request_user_attention, latest};
+use iced::Task;
 
-pub fn send_notification(item_name: &str, price: usize) {
+use crate::log_mess;
+use crate::message::Message;
+
+pub fn send_notification(item_name: &str, price: usize) -> Task<Message> {
     log_mess!["The price ({}) of item {} is lower than threshold!", price, item_name];
+    latest().and_then(move |id| request_user_attention::<Message>(id, Some(UserAttention::Informational)))
 }

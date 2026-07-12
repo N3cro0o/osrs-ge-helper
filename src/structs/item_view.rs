@@ -5,7 +5,7 @@ use iced::alignment::Horizontal;
 use num_format::{Locale, ToFormattedString};
 
 use crate::{Message, MainLayout};
-use crate::{APP_PADDING, APP_SPACING, COMBOBOX_MENU_HEIGHT};
+use crate::{APP_PADDING, APP_SPACING, COMBOBOX_MENU_HEIGHT, UPPER_BAR_HEIGHT};
 use crate::osrs;
 use crate::structs;
 
@@ -126,7 +126,7 @@ impl structs::AppPages {
 				.spacing(APP_SPACING)
 			)
 			.align_x(Horizontal::Left)
-			.height(Length::FillPortion(1))
+			.height(Length::Fixed(UPPER_BAR_HEIGHT))
 			.style(container::rounded_box);
 		
 		let body_data_row = row![

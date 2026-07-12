@@ -5,7 +5,7 @@ use iced::alignment::Horizontal;
 use num_format::{Locale, ToFormattedString};
 
 use crate::{Message, MainLayout, CurrentRecipe};
-use crate::{APP_PADDING, APP_SPACING, COMBOBOX_MENU_HEIGHT};
+use crate::{APP_PADDING, UPPER_BAR_HEIGHT, APP_SPACING, COMBOBOX_MENU_HEIGHT};
 use crate::structs;
 
 impl structs::AppPages {
@@ -77,7 +77,7 @@ impl structs::AppPages {
 				]
 				.spacing(APP_SPACING)
 			)
-			.height(Length::Fixed(59.0))
+			.height(Length::Fixed(UPPER_BAR_HEIGHT))
 			.style(container::rounded_box)
 			.align_x(Horizontal::Left)
 			.padding([0, 5]);
@@ -123,7 +123,7 @@ impl structs::AppPages {
 					]
 					.spacing(APP_SPACING)
 				)
-				.height(Length::FillPortion(1))
+				.height(Length::Fixed(UPPER_BAR_HEIGHT))
 				.style(container::rounded_box)
 				.align_x(Horizontal::Left)
 				.padding([0, 5]);
@@ -151,7 +151,7 @@ impl structs::AppPages {
 					]
 					.spacing(APP_SPACING)
 				)
-				.height(Length::FillPortion(1))
+				.height(Length::Fixed(UPPER_BAR_HEIGHT))
 				.style(container::rounded_box)
 				.align_x(Horizontal::Left)
 				.padding([0, 5])

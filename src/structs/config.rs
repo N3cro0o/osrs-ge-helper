@@ -107,7 +107,7 @@ impl structs::AppPages {
 		column![
 				row![
 						text("Update interval:"),
-						space::horizontal(),
+						space::horizontal().width(Length::Fixed(25.0)),
 						text_input("", &state.extra_string) // &state.config_settings.app_update_interval.to_string()
 							.on_input(Message::ConfigChangeUpdateInterval)
 							.width(Length::Fixed(100.0))
@@ -118,10 +118,18 @@ impl structs::AppPages {
         toggler(state.extra_bool)
           .on_toggle(Message::ConfigChangeAutoStartup)
           .label("Open app on system boot"),
-        iced::widget::rule::horizontal(4),
+        space::vertical().height(Length::Fixed(10.0)),
+        iced::widget::rule::horizontal(4)
+            .style(|theme| {
+                let mut s = iced::widget::rule::default(theme);
+                s.radius = 4.0.into();
+                s.fill_mode = iced::widget::rule::FillMode::Percent(75.0);
+                s
+            }),
+        space::vertical().height(Length::Fixed(10.0)),
 				row![
 						text("Local data directory:"),
-						space::horizontal(),
+						space::horizontal().width(Length::Fixed(25.0)),
 						button(text(path.clone())).on_press(Message::OpenExplorer(path)),
 					].spacing(APP_SPACING),
 				space::vertical().height(Length::Fixed(50.0)),
@@ -141,6 +149,7 @@ impl structs::AppPages {
 					.style(button::danger)).center_x(Length::Fill),
 			]
 			.spacing(APP_SPACING)
+      .align_x(Center)
 	}
 	
 	fn window_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message> {
@@ -174,10 +183,24 @@ impl structs::AppPages {
       .align_x(Center)
 	}
 	
-	fn ping_settings_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
+	fn ping_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message> {
 		column![
-		    toggler(false)
+		    toggler(state.extra_bool_1)
+            .on_toggle(Message::ConfigToggleAllNotification)
             .label("Enable notifications"),
+        space::vertical().height(Length::Fixed(10.0)),
+        iced::widget::rule::horizontal(4)
+            .style(|theme| {
+                let mut s = iced::widget::rule::default(theme);
+                s.radius = 4.0.into();
+                s.fill_mode = iced::widget::rule::FillMode::Percent(75.0);
+                s
+            }),
+        space::vertical().height(Length::Fixed(10.0)),
+        toggler(false)
+            .on_toggle_maybe(if state.config_settings.notifications.enable { Some(Message::ConfigToggleAllNotification) }
+                else { None })
+            .label("Enable sound notifications"),
 			]
 			.spacing(APP_SPACING)
       .align_x(Center)

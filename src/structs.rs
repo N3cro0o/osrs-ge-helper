@@ -93,12 +93,18 @@ pub enum ConfigPages {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigSettings {
 	pub resolution: (f32, f32),
-  #[serde(skip)]
   pub new_resolution: WindowSizes,
 	pub resize: bool,
   pub theme: Option<isize>,  // Positive -> predefined, Negative -> custom, None -> default
 	pub app_update_interval: usize,
   pub autostart: bool,
+  pub notifications: ConfigSettingsNotifications,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ConfigSettingsNotifications {
+    pub enable: bool,
+    pub sound_enable: bool,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -510,6 +516,7 @@ impl ConfigSettings {
 			app_update_interval: 60,
       theme: None,
       autostart: false,
+      notifications: ConfigSettingsNotifications::default(),
 		}
 	}
 
@@ -542,6 +549,15 @@ impl Default for ConfigSettings {
 	fn default() -> Self {
 		ConfigSettings::new()
 	}
+}
+
+impl Default for ConfigSettingsNotifications {
+    fn default() -> Self {
+        ConfigSettingsNotifications {
+            enable: true,
+            sound_enable: true,
+        }
+    }
 }
 
 impl WebPage {

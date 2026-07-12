@@ -29,6 +29,7 @@ pub const COMBOBOX_MENU_HEIGHT: f32 = 300.0;
 pub const ALCHEMY_DAILY_VOLUME_LIMIT: usize = 100;
 pub const ALCHEMY_VEC_SIZE: usize = 12;
 pub const IMAGE_SIZE_WIDTH: f32 = 128.0;
+pub const UPPER_BAR_HEIGHT: f32 = 60.0;
 
 pub struct MainLayout {
 	plotter: ItemViewPlot,
@@ -113,6 +114,11 @@ impl MainLayout {
             log_err!["Error while toggling autostart: {}", err];
         }
     }
+
+    if cfg!(debug_assertions) {
+        log_mess!["{:?}", conf_loaded];
+    }
+
 		let mut layout = MainLayout {
 			plotter: ItemViewPlot::default(),
 			
@@ -173,7 +179,8 @@ impl MainLayout {
 	fn subscription(&self) -> Subscription<Message> {
 		let update_time = self.config_settings.app_update_interval;
 		let tick = iced::time::every(Duration::from_secs(update_time as u64)).map(Message::RefreshTick);
-		Subscription::batch(vec![tick, iced::event::listen().map(Message::EventOccurred)])
+		let tick_ping = iced::time::every(Duration::from_secs(update_time as u64)).map(Message::PingTick);
+		Subscription::batch(vec![tick, tick_ping, iced::event::listen().map(Message::EventOccurred)])
 	}
 	
 	pub fn item_view_plot(&self) -> &ItemViewPlot {
@@ -259,9 +266,9 @@ impl MainLayout {
 		let sidebar = self.current_page.sidebar(self);
 		let config_panel = container(
 				row![
-						text(format!("V. {}", env!("CARGO_PKG_VERSION"))),
+						text(format!("Version: V.{}", env!("CARGO_PKG_VERSION"))),
 						space::horizontal(),
-						button("config")
+						button("Config")
 							.on_press(Message::ChangePage(AppPages::Config)),
 					]
 					.padding(APP_PADDING)
@@ -351,7 +358,7 @@ impl MainLayout {
 				self.extra_string_3.clear(); // Used in ItemView!
 				self.plotter.reset_data();
 				self.extra_bool = self.config_settings.autostart;
-				self.extra_bool_1 = false;
+				self.extra_bool_1 = self.config_settings.notifications.enable;
 			}
 		}
 		self.current_page = page;
@@ -399,6 +406,7 @@ impl MainLayout {
 		self.config_settings.app_update_interval = app_interval;
 		self.config_settings.resolution = (width as f32, height as f32);
     self.config_settings.autostart = self.extra_bool;
+    self.config_settings.notifications.enable = self.extra_bool_1;
 		let res = self.config_settings.resolution();
 		Ok(iced::window::latest().and_then(move |id| iced::window::resize::<Message>(id, res)))
 	}
@@ -632,7 +640,6 @@ impl MainLayout {
 			self.refresh_plotter_data()?;
 		}
     self.check_update();
-    self.check_item_view_prices();
 		result
 	}
 	
@@ -751,15 +758,17 @@ pub fn get_alch_fav_vec(&self) -> Vec<String> {
     }
   }
 
-  fn check_item_view_prices(&self) {
+  pub fn check_item_view_prices(&self) -> Option<Task<Message>> {
+      let mut task_to_return = None;
       for item in self.saved_items_item_view.iter() {
         if let None = item.price_threshold { continue; }
         let thresh = item.price_threshold.unwrap();
         let data = self.latest_ge_data.get_data_by_id(item.id).unwrap();
         if data.buy_price().unwrap() < thresh {
-            ping::send_notification(&item.name, data.buy_price().unwrap());
+            task_to_return = Some(ping::send_notification(&item.name, data.buy_price().unwrap()));
         }
       }
+      task_to_return
   }
 }
 

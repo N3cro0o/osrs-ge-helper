@@ -104,6 +104,9 @@ pub fn save_alchemy(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
 
 pub fn save_config(data: &ConfigSettings) -> io::Result<()>{
 	let mut path = get_local_data_dir()?;
+  if cfg!(debug_assertions) {
+      log_mess!["{:?}", data];
+  }
 	path.push(CONFIG_DIR);
 	if !check_dir(&path) {
 		create_dir(&path)?;

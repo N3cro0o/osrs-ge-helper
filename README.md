@@ -23,28 +23,31 @@ using current GE prices. Users can use already created recipes as resources and 
 ## Todo
 
 * Config
-  * ~~Credits~~
-  * ~~Refresh system offset for fetching new data~~
-  * ~~Other themes~~
-  * ~~Check for new updates~~
+  * ~Credits~
+  * ~Refresh system offset for fetching new data~
+  * ~Other themes~
+  * ~Check for new updates~
   * Add sound pings options
-  * ~~Add better saving system~~
-  * ~~Save options properly~~
-  * Make ConfigView look better
-* ~~App image~~
+    * Enable sound pings
+    * Volume
+    * Test
+  * ~Add better saving system~
+  * ~Save options properly~
+  * ~Make ConfigView look better~
+* ~App image~~
 * Add button images
   * Member item filter
   * Save / favourite
 * Write docs comments
-* ~~Add ItemView notifications system~~
+* ~Add ItemView notifications system~
 * Notifications
-  * Add window icon pings (on toolbar)
+  * ~Add window icon pings (on toolbar)~
   * Add sound pings
-
+* ~Fix layout being stretched while changing resolution~
 ### Optional
 
 * Localization
 * ItemView
-  * ~~Add bond view~~
+  * ~Add bond view~
 * Notifications
   * Add system notifications (the popup window on the side of the screen)
