@@ -19,6 +19,7 @@ mod config;
 
 pub const SKIP_VARIABLE: u16 = 0;
 
+/// Helper struct used to implement filtering logic for DataHolder instances.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchFilter {
 	pub only_non_member_items: bool,
@@ -30,6 +31,13 @@ pub struct SearchFilter {
 	pub only_selected: bool,
 }
 
+/// Main struct used to create application pages view. Additional implementations are stored in
+/// src/structs directory.  
+/// All AppPages values have three assigned methods used to create application views:
+/// * (value name here)_sidebar_view()
+/// * (value name here)_body_view()
+/// * (value name here)_overlay_view()
+/// If given method cannot be found, general other_(view name here)_view() method is used.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum AppPages {
 	#[default]
@@ -39,9 +47,11 @@ pub enum AppPages {
 	Config,
 }
 
+/// Helper struct holding item ID and count. Used in calculating Recipe cost.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RecipeElement (usize, usize);
 
+/// Auxiliary enum used to toggle between Calculator functionalities. Obsolete, need to be removed.
 #[derive(Debug)]
 pub enum RecipePages {
 	CalculatorPage,
@@ -49,6 +59,8 @@ pub enum RecipePages {
 	ProfitPage,
 }
 
+/// Main struct used to hold Recipe information. Hold only counts of resources and products, price
+/// and difference is calculated during the app runtime.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RecipeHolder {
 	calc_curr_resources: Vec<RecipeElement>,
@@ -70,17 +82,21 @@ pub struct RecipeHolder {
 	pub reci_cost: isize,
 }
 
+/// Auxiliary enum used to check if there is any Recipe selected.
 pub enum CurrentRecipe {
 	Loaded(RecipeHolder),
 	Empty,
 }
 
+/// Auxiliary struct used to properly show timeseries data. 
 #[derive(Default)]
 pub struct ItemViewPlot {
 	item_name: String,
 	data_series: Option<osrs::TimeseriesData>,
 }
 
+/// Auxiliary enum used to create subpages for Config view. Used to categorise config settings for
+/// better visibility and experience.
 #[derive(Debug, PartialEq, Clone)]
 pub enum ConfigPages {
 	AppSettings,
@@ -90,6 +106,7 @@ pub enum ConfigPages {
 	Credits, 
 }
 
+/// Main struct used to store and handle application settings
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigSettings {
 	pub resolution: (f32, f32),
@@ -101,12 +118,14 @@ pub struct ConfigSettings {
   pub notifications: ConfigSettingsNotifications,
 }
 
+/// Auxiliary struct used to store and handle notification settings
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConfigSettingsNotifications {
     pub enable: bool,
     pub sound_enable: bool,
 }
 
+/// Enum used to hold URL for credits, URL to github repository to check for updates and others.
 #[derive(PartialEq, Debug, Clone)]
 pub enum WebPage {
   Itch,
@@ -116,6 +135,7 @@ pub enum WebPage {
   Telemetry,
 }
 
+/// Struct used to handle window resolution.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct WindowSizes {
     pub width: u16,

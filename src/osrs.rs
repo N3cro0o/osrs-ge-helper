@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::slice::Iter;
 use super::structs;
 
+/// Basic struct holding information returned from mapping endpoint.
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct DataHolder {
 	pub name: String,
@@ -19,12 +20,14 @@ pub struct DataHolder {
   pub price_threshold: Option<usize>,
 }
 
+/// Auxiliary struct expanding DataHolder with custom User price threshold. Used for notifications.
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct DataThresholdHolder {
     pub id: usize,
     pub price_threshold: Option<usize>,
 }
 
+/// Struct used to hold current GE data like high and low price returned from latest endpoint.
 #[derive(Default, Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct GEData {
 	high: Option<usize>,
@@ -35,17 +38,20 @@ pub struct GEData {
 	low_time: Option<usize>,
 }
 
+/// Struct used to hold GE volume data returned from volume endpoint.
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct VolumeData {
 	timestamp: usize,
 	data: HashMap<String, usize>,
 }
 
+/// Abstraction struct used to hold GEData.
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct LatestData {
 	data: HashMap<String, GEData>,
 }
 
+/// Enum used to implement historic data offset used for plotting information.
 #[derive(PartialEq, Clone, Debug)]
 pub enum Timeseries {
 	FiveMin,
@@ -73,6 +79,7 @@ impl std::fmt::Display for Timeseries {
 	}
 }
 
+/// Struct used to store historic price data for given item ID.
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct TimeseriesData {
 	data: Vec<TimeseriesItemData>,
@@ -80,6 +87,7 @@ pub struct TimeseriesData {
 	item_id: usize,
 }
 
+/// Struct used to store historic price data for given moment in time.
 #[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct TimeseriesItemData {
 	pub timestamp: usize,

@@ -21,16 +21,29 @@ use message::Message;
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot, WindowSizes};
 use structs::{ConfigPages, ConfigSettings};
 
+/// ID for Oldschool RuneScape members bond.
 pub const BOND_ID: usize = 13190;
-pub const USER_AGENT_MESSAGE: &str = "N3cro0oDev (discord: necro0o) - GE Price Calc Prototype";
+/// Message used while sending request to OSRS wiki servers. Should be changed when forked but the
+/// name of the original author must be included.
+pub const USER_AGENT_MESSAGE: &str = "N3cro0oDev (discord: necro0o) - GE Price Calc helper";
+/// Universal size for spacing between elements in project.
 pub const APP_SPACING: Pixels = Pixels(5.0);
+/// Universal size for padding for elements in project.
 pub const APP_PADDING: Pixels = Pixels(5.0);
+/// Universal height for combo_box menu. Should be not too big to cover too much space. 
 pub const COMBOBOX_MENU_HEIGHT: f32 = 300.0;
+/// Constant used to show only items with higher daily volume. Currently unused
 pub const ALCHEMY_DAILY_VOLUME_LIMIT: usize = 100;
+/// Constant used to determine the size limit of the table for Alchemy view.
 pub const ALCHEMY_VEC_SIZE: usize = 12;
+/// Universal size for images.
 pub const IMAGE_SIZE_WIDTH: f32 = 128.0;
+/// Constant used for upper panel / bar while designing new views. Example: search bar for
+/// Calculator view.
 pub const UPPER_BAR_HEIGHT: f32 = 60.0;
 
+/// Main structed used for storing important application information. Additionally, MainLayout
+/// handles main layout and controlls which sub page's view should be rendered. 
 pub struct MainLayout {
 	plotter: ItemViewPlot,
 	
@@ -78,115 +91,123 @@ pub struct MainLayout {
 }
 
 impl MainLayout {
-	pub fn new() -> Self {
-		let vec = match files::load_recipes_vec() {
-			Ok(v) => v,
-			Err(err) => {
-				log_err!("Cannot get recipe data. {}", err.to_string());
-				vec![]
-			}
-		};
-		let vec_item_view = match files::load_view_items() {
-			Ok(v) => v,
-			Err(err) => {
-				log_err!("Cannot get ItemView data. {}", err.to_string());
-				vec![]
-			}
-		};		
-		let vec_alch = match files::load_alchemy () {
-			Ok(v) => v,
-			Err(err) => {
-				log_err!("Cannot get Alchemy data. {}", err.to_string());
-				vec![]
-			}
-		};
-    let conf_loaded = match files::load_config() {
-			Ok(v) => v,
-			Err(err) => {
-				log_err!("Cannot get Config data. {}", err.to_string());
-				ConfigSettings::default()
-			}
-    };
-    let autostart_check = os::check_autostart();
-    if conf_loaded.autostart != autostart_check {
-        log_err!["Autostart data is not the same. Fixing..."];
-        if let Err(err) = os::toggle_startup_on_boot(conf_loaded.autostart) {
-            log_err!["Error while toggling autostart: {}", err];
+    /// Main function used to create new MainLayout instance. Reads local file storage and fetches
+    /// necessary information from the server.
+    pub fn new() -> Self {
+        let vec = match files::load_recipes_vec() {
+          Ok(v) => v,
+          Err(err) => {
+            log_err!("Cannot get recipe data. {}", err.to_string());
+            vec![]
+          }
+        };
+        let vec_item_view = match files::load_view_items() {
+          Ok(v) => v,
+          Err(err) => {
+            log_err!("Cannot get ItemView data. {}", err.to_string());
+            vec![]
+          }
+        };		
+        let vec_alch = match files::load_alchemy () {
+          Ok(v) => v,
+          Err(err) => {
+            log_err!("Cannot get Alchemy data. {}", err.to_string());
+            vec![]
+          }
+        };
+        let conf_loaded = match files::load_config() {
+          Ok(v) => v,
+          Err(err) => {
+            log_err!("Cannot get Config data. {}", err.to_string());
+            ConfigSettings::default()
+          }
+        };
+        let autostart_check = os::check_autostart();
+        if conf_loaded.autostart != autostart_check {
+            log_err!["Autostart data is not the same. Fixing..."];
+            if let Err(err) = os::toggle_startup_on_boot(conf_loaded.autostart) {
+                log_err!["Error while toggling autostart: {}", err];
+            }
         }
+
+        if cfg!(debug_assertions) {
+            log_mess!["{:?}", conf_loaded];
+        }
+
+        let mut layout = MainLayout {
+          plotter: ItemViewPlot::default(),
+          
+          _debug_value: false,
+          data: vec![],
+          combo_data: combo_box::State::new(vec![]),
+          latest_ge_data: osrs::LatestData::default(),
+          item_volume: osrs::VolumeData::default(),
+          bond_sell_price: None,
+          last_item: None,
+          last_item_ge: None,
+          title: "OSRS GE Calculator".to_string(),
+          current_page: AppPages::ItemView,
+          popup_ready: false,
+          
+          saved_items_item_view: vec_item_view,
+          combo_current_filter_item_view: None,
+          selected_item_timeseries_data: None,
+          selected_timeseries: osrs::Timeseries::FiveMin,
+          selected_item_favourite: false,
+
+          fav_items_alchemy: vec_alch,
+          search_filter_alchemy: Some(SearchFilter::default()),
+          best_items_alchemy: vec![],
+          table_vec_offset: 0,
+          
+          calc_curr_recipe: CurrentRecipe::default(),
+          calc_saved_recipes: vec,
+          calc_description: Content::new(),
+          calc_price_multi: 1,
+          
+          config_curr_page: ConfigPages::AppSettings,
+          config_settings: conf_loaded,
+          config_window_combo_data: combo_box::State::new(WindowSizes::all()),
+          is_config_changed: false,
+          is_new_version: false,
+
+          extra_string: String::new(),
+          extra_string_1: String::new(),
+          extra_string_2: String::new(),
+          extra_string_3: String::new(),
+          extra_bool: false,
+          extra_bool_1: false,
+          extra_bool_2: false,
+        };
+        let _ = layout.update(Message::RefreshData);
+        layout.select_new_item(&osrs::DataHolder::bond_holder());
+        let _ = layout.get_timeseries_data(&osrs::DataHolder::bond_holder());
+        let _ = layout.apply_new_settings(false);
+        log_mess!["Layout initialized"];
+        layout
     }
 
-    if cfg!(debug_assertions) {
-        log_mess!["{:?}", conf_loaded];
-    }
-
-		let mut layout = MainLayout {
-			plotter: ItemViewPlot::default(),
-			
-			_debug_value: false,
-			data: vec![],
-			combo_data: combo_box::State::new(vec![]),
-			latest_ge_data: osrs::LatestData::default(),
-			item_volume: osrs::VolumeData::default(),
-			bond_sell_price: None,
-			last_item: None,
-			last_item_ge: None,
-			title: "OSRS GE Calculator".to_string(),
-			current_page: AppPages::ItemView,
-			popup_ready: false,
-			
-			saved_items_item_view: vec_item_view,
-			combo_current_filter_item_view: None,
-			selected_item_timeseries_data: None,
-			selected_timeseries: osrs::Timeseries::FiveMin,
-	    selected_item_favourite: false,
-
-			fav_items_alchemy: vec_alch,
-			search_filter_alchemy: Some(SearchFilter::default()),
-			best_items_alchemy: vec![],
-			table_vec_offset: 0,
-			
-			calc_curr_recipe: CurrentRecipe::default(),
-			calc_saved_recipes: vec,
-			calc_description: Content::new(),
-			calc_price_multi: 1,
-			
-			config_curr_page: ConfigPages::AppSettings,
-			config_settings: conf_loaded,
-		  config_window_combo_data: combo_box::State::new(WindowSizes::all()),
-      is_config_changed: false,
-      is_new_version: false,
-
-			extra_string: String::new(),
-			extra_string_1: String::new(),
-			extra_string_2: String::new(),
-			extra_string_3: String::new(),
-			extra_bool: false,
-			extra_bool_1: false,
-			extra_bool_2: false,
-		};
-		let _ = layout.update(Message::RefreshData);
-    layout.select_new_item(&osrs::DataHolder::bond_holder());
-    let _ = layout.get_timeseries_data(&osrs::DataHolder::bond_holder());
-    let _ = layout.apply_new_settings(false);
-		log_mess!["Layout initialized"];
-    layout
-	}
-	
-	fn title(&self) -> String {
+    /// Function used to return stored title inside struct MainLayout
+    fn title(&self) -> String {
         format!("N3cro0oDev - {}", self.title)
     }
-	
-	fn subscription(&self) -> Subscription<Message> {
-		let update_time = self.config_settings.app_update_interval;
-		let tick = iced::time::every(Duration::from_secs(update_time as u64)).map(Message::RefreshTick);
-		let tick_ping = iced::time::every(Duration::from_secs(update_time as u64)).map(Message::PingTick);
-		Subscription::batch(vec![tick, tick_ping, iced::event::listen().map(Message::EventOccurred)])
-	}
-	
-	pub fn item_view_plot(&self) -> &ItemViewPlot {
-		&self.plotter
-	}
-	
+
+    /// Function used to handle subscriptions. Currently generates periodic pings using
+    /// `self.config_settings.app_update_interval` and catches other app events.
+    fn subscription(&self) -> Subscription<Message> {
+        let update_time = self.config_settings.app_update_interval;
+        let tick = iced::time::every(Duration::from_secs(update_time as u64)).map(Message::RefreshTick);
+        let tick_ping = iced::time::every(Duration::from_secs(update_time as u64)).map(Message::PingTick);
+        Subscription::batch(vec![tick, tick_ping, iced::event::listen().map(Message::EventOccurred)])
+    }
+
+    /// Function returns reference to locally stored plotter.
+    pub fn item_view_plot(&self) -> &ItemViewPlot {
+        &self.plotter
+    }
+
+    /// Function responsible for generating and handling main layout of application. Using
+    /// information from `self.current_page` generates additional AppPages views.
     pub fn view(&self) -> Element<'_, Message> {
 		let headline = container(
 				row![
@@ -261,7 +282,9 @@ impl MainLayout {
 			.padding(APP_PADDING)
 			.into()
     }
-
+  
+  /// Function used in handling AppPages smaller side_body view. Returns Column<'_, Message>
+  /// struct holding prepared view and menu containing config submenu.
 	fn side_body(&self) -> iced::widget::Column<'_, Message> {
 		let sidebar = self.current_page.sidebar(self);
 		let config_panel = container(
@@ -282,23 +305,29 @@ impl MainLayout {
 		side
 	}
 
-	fn main_body(&self) -> Element<'_, Message> {
-		if !self.popup_ready {
-			self.current_page.body(self)
-		}
-		else {
-			stack![
-				self.current_page.body(self),
-				center(self.current_page.overlay(self)),
-			]
-			.into()
-		}
-	}
-
-	pub fn update(&mut self, message: Message) -> Task<Message> {
-		message::update(self, message)
+    /// Function used in handling AppPages main view. Additionally checks for overlay information and
+    /// generates proper main view.
+    fn main_body(&self) -> Element<'_, Message> {
+        if !self.popup_ready {
+          self.current_page.body(self)
+        }
+        else {
+          stack![
+            self.current_page.body(self),
+            center(self.current_page.overlay(self)),
+          ]
+          .into()
+        }
     }
-	
+
+    /// Function used in getting Message struct from runtime. Returns Task<Message>. All Message
+    /// logic is handled in message module.
+    pub fn update(&mut self, message: Message) -> Task<Message> {
+        message::update(self, message)
+    }
+
+    /// Function used to apply locally stored data to self.config_settings and applies new settings
+    /// app wide. If `save_config` is true, newly applied settings are saved in local storage.
     pub fn apply_new_settings(&mut self, save_config: bool) -> Task<Message> {
         let mut task_to_ret = Task::none();
         if self.current_page == AppPages::Config {
@@ -316,6 +345,10 @@ impl MainLayout {
         task_to_ret
     }
 
+  /// Function used to update app variables after AppPages change message request.
+  /// * Loads selected current recipe for Calculator page
+  /// * Loads current alchemy filter values into temporary variables
+  /// * Loads settings values into temporary values
 	fn update_page(&mut self, page: AppPages) {
 		match page {
 			AppPages::Alchemy => {
@@ -366,12 +399,15 @@ impl MainLayout {
 		log_mess!("{}", self.current_page.return_current_page_info());
 	}
 
+    /// Reject all changes to Layout.config_settings
     pub fn reset_settings(&mut self) {
-      let curr_res = WindowSizes::from_size(self.config_settings.resolution.into());
-      self.config_settings.new_resolution = curr_res;
-      self.extra_string = self.config_settings.app_update_interval.to_string()
+        let curr_res = WindowSizes::from_size(self.config_settings.resolution.into());
+        self.config_settings.new_resolution = curr_res;
+        self.extra_string = self.config_settings.app_update_interval.to_string()
     }
 
+  /// Function accepts current changes and applies them. Updates window resolution and application
+  /// settings.
 	fn config_change_changes(&mut self) -> Result<Task<Message>, String> {
 		let app_interval = match self.extra_string.parse::<usize>() {
 			Ok(i) => {
@@ -411,6 +447,8 @@ impl MainLayout {
 		Ok(iced::window::latest().and_then(move |id| iced::window::resize::<Message>(id, res)))
 	}
 	
+  /// Helper function which is called after closing popup window.
+  /// * In Alchemy Page new filter is applied.
 	fn extra_stuff_to_do_once_popup_closes(&mut self) {
 		match self.current_page {
 			AppPages::Alchemy => {
@@ -424,6 +462,8 @@ impl MainLayout {
 		}
 	}
 	
+  /// Function used to fetch necessary prices for resources and producrs and calculates price
+  /// difference.
 	fn recalculate_recipe_prices(&mut self) {
 		if let CurrentRecipe::Loaded(holder) = &mut self.calc_curr_recipe {
 			let mut resr_cost: isize = 0;
@@ -448,6 +488,7 @@ impl MainLayout {
 		}
 	}
 	
+  /// Function returns Option<&DataHolder> found in Layout.data vector.
 	pub fn get_item_by_id (&self, id: usize) -> Option<&osrs::DataHolder> {
 		match self.data.iter().find(|thing| thing.id == id) {
 			Some(data) => Some(&data),
@@ -455,6 +496,7 @@ impl MainLayout {
 		}
 	}
 	
+  /// Function fetches history data for given item. After that function updates plotter label and data.
 	fn get_timeseries_data(&mut self, item: &osrs::DataHolder) -> Result<(), String> {
 		let url = format!("https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep={}&id={}", self.selected_timeseries, item.id);
 		let response = match self.fetch_get_data(&url) {
@@ -477,6 +519,8 @@ impl MainLayout {
 		Ok(())
 	}
 	
+  /// Function used to calculate most profitable items to hi alch. First gets filtered vector of all
+  /// items and then sorts them by their alchemy value - buy price.
 	fn calculate_best_alchemy(&mut self) {
 		let options = self.create_filtered_vec(&self.search_filter_alchemy);
 		let mut output: Vec<(usize, isize)> = vec![];
@@ -504,6 +548,7 @@ impl MainLayout {
 		self.best_items_alchemy = output;
 	}
 	
+  /// Function used to return filtered vector of all items.
 	pub fn create_filtered_vec(&self, filter: &Option<SearchFilter>) -> Vec<osrs::DataHolder> {
 		let mut new_vec = vec![];
 		for item in self.data.iter() {
@@ -528,12 +573,14 @@ impl MainLayout {
 		new_vec
 	}
 	
+  /// Function used to create ItemView Combo Box Menu data.
 	fn create_combo_box_data(&mut self) {
 		let mut new_vec = self.create_filtered_vec(&self.combo_current_filter_item_view);
     new_vec.push(osrs::DataHolder::bond_holder());
 		self.combo_data = combo_box::State::new(new_vec);
 	}
 	
+  /// Function used to save favourite item in ItemView in local file system
 	fn save_current_item(&mut self) -> Result<(), (u8, String)> {
 		if let None = self.last_item {
 			return Err((1, String::from("No selected item")));
@@ -542,6 +589,7 @@ impl MainLayout {
 		Ok(())
 	}	
 	
+  /// Function used to save favourite item in Alchemy in local file system
 	fn alch_save_current_item(&mut self, item: osrs::DataHolder) -> Result<bool, String> {
 		// Check for Item
 			// Add Item -> true
@@ -556,6 +604,7 @@ impl MainLayout {
 		}
 	}
 	
+  /// Function used to remove item from saved list  
 	fn forget_current_item(&mut self) -> Result<(), (u8, String)> {
 		if let None = self.last_item {
 			return Err((1, String::from("No selected item")));
@@ -566,7 +615,9 @@ impl MainLayout {
 		}
 		Ok(())
 	}
-	
+
+  /// Function used to select new item for ItemView page. Information about selected item is
+  /// collected from Layout.get_price_from_id() function.
 	fn select_new_item(&mut self, item: &osrs::DataHolder){
 		log_mess!("Selected new item: {}", item.id);
 		match self.get_price_from_id(item.id) {
@@ -591,10 +642,13 @@ impl MainLayout {
 		}
 	}
 	
+    /// Function used to check if selected `data` item is saved in ItemView page.
     fn check_item_favourite(&self, data: &osrs::DataHolder) -> bool {
         self.saved_items_item_view.iter().find(|item| *item == data).is_some()
     }
 
+    /// Function used to get User selected price value. This value is used in notification system to
+    /// signal price changes.
     fn get_price_threshold(&self) -> Option<usize> {
         let id = self.saved_items_item_view.iter().position(|item| *item == self.last_item.clone().unwrap());
         if let Some(item_id) = id {
@@ -605,6 +659,8 @@ impl MainLayout {
         }
     }
 
+    /// Function used to update User selected price value. This value is used in notification system to
+    /// signal price changes.
     fn update_price_thershold_for_current_item(&mut self, value: usize) {
         let id = self.saved_items_item_view.iter().position(|item| *item == self.last_item.clone().unwrap());
         if let Some(item_id) = id {
@@ -615,6 +671,7 @@ impl MainLayout {
         }
     }
 
+  /// Function used to return current GE price data for selected id. 
 	fn get_price_from_id(&self, id: usize) -> Result<osrs::GEData, String> {
 		// let response = match self.fetch_get_data(&format!("https://prices.runescape.wiki/api/v1/osrs/latest?id={}", id)) {
 			// Ok(data) => data,
@@ -631,7 +688,8 @@ impl MainLayout {
 		// }
 		self.latest_ge_data.get_data_by_id(id).ok_or(format!("Cannot find desired item {id}"))
 	}
-	
+  
+  /// Refresh batch function used to synchronise OSRS items data and application updates.
 	fn refresh_data(&mut self) -> Result<usize, String> {
 		let result = self.refresh_item_data();
 		if let Ok(_) = result {
@@ -643,6 +701,7 @@ impl MainLayout {
 		result
 	}
 	
+  /// Function used to update build-in plotter with lastly selected item.
 	fn refresh_plotter_data(&mut self) -> Result<(), String> {
 		if let Some(item) = self.last_item.clone() {
 			self.get_timeseries_data(&item)
@@ -652,6 +711,7 @@ impl MainLayout {
 		}
 	}
 	
+  /// One of the update functions. Fetches mapping data.
 	fn refresh_item_data(&mut self) -> Result<usize, String> {
 		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v1/osrs/mapping") {
 			Ok(resp) => resp,
@@ -674,6 +734,7 @@ impl MainLayout {
 		Ok(len)
 	}
 	
+  /// One of the update functions. Fetches GE volume data.
 	fn refresh_volume_data(&mut self) -> Result<(), String> {
 		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v1/osrs/volumes") {
 			Ok(resp) => resp,
@@ -694,7 +755,8 @@ impl MainLayout {
 		self.item_volume = data;
 		Ok(())
 	}	
-	
+
+  /// One of the update functions. Fetches GE low and high price data.
 	fn refresh_latest_data(&mut self) -> Result<(), String> {
 		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v1/osrs/latest") {
 			Ok(resp) => resp,
@@ -716,6 +778,8 @@ impl MainLayout {
 		Ok(())
 	}
 	
+  /// Function used to send HTTP requests. Error handling isn't implemented and thus returns
+  /// reqwest::Result<Response>.
 	fn fetch_get_data(&self, url: &str) -> reqwest::Result<Response> {
 		let client = Client::new();
 		let response = client.get(url)
@@ -724,6 +788,8 @@ impl MainLayout {
 		response
 	}
 	
+/// Function used to return Vec<String> with all Alchemy saved items. String format -> {item name}:
+/// {difference} gp.
 pub fn get_alch_fav_vec(&self) -> Vec<String> {
 	let mut data_vec: Vec<String> = vec![];
 	for data in self.fav_items_alchemy.iter(){
@@ -758,6 +824,8 @@ pub fn get_alch_fav_vec(&self) -> Vec<String> {
     }
   }
 
+  /// One of the notification functions. Function used to check if saved item price is lower than
+  /// User selected threshold and returns adequate Task.
   pub fn check_item_view_prices(&self) -> Option<Task<Message>> {
       let mut task_to_return = None;
       for item in self.saved_items_item_view.iter() {

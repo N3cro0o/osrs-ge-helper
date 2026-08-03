@@ -3,6 +3,7 @@ use std::fs::{canonicalize, remove_file};
 
 use crate::{log_mess, log_err};
 
+/// Custom Error struct used to wrap other Error type structs into common one.
 #[derive(Debug)]
 pub enum OsError {
     IoError(String),
@@ -28,6 +29,8 @@ impl std::fmt::Display for OsError {
 
 impl std::error::Error for OsError {}
 
+/// Windows function only. Checks if shell link exists in the autostart directory. Depending on
+/// `check` argument, new shell file is created or old one is deleted.
 #[cfg(target_os = "windows")]
 pub fn toggle_startup_on_boot(check: bool) -> Result<(), OsError> {
     let app_path = std::env::args().next().unwrap();
@@ -49,6 +52,8 @@ pub fn toggle_startup_on_boot(check: bool) -> Result<(), OsError> {
     }
 }
 
+/// Windows function only. Creates shell link using WinAPI and DOM in the autostart directory. This
+/// way of enabling autostart is easier to test and easier for User to manage and check.
 #[cfg(target_os = "windows")]
 fn create_shell_link(app_path: PathBuf, autostart_path: PathBuf) -> Result<(), OsError> {
     use windows::Win32::System::Com::*;
@@ -94,8 +99,10 @@ fn create_shell_link(app_path: PathBuf, autostart_path: PathBuf) -> Result<(), O
         log_mess!["COM done"];
     }
     Ok(())
+    // This is certified black magic, damn winapi
 }
 
+/// Function used to delete link (for Windows -> shell link) in autostart directory.
 fn remove_shell_link(autostart_path: PathBuf) -> Result<(), OsError> {
     let shell_link_exists = match autostart_path.try_exists() {
         Ok(b) => b,
@@ -109,10 +116,12 @@ fn remove_shell_link(autostart_path: PathBuf) -> Result<(), OsError> {
     Ok(())
 }
 
+/// Abstract function used to check if autostart is enabled.
 pub fn check_autostart() -> bool {
     check_target_autostart()
 }
 
+/// Windows function only. Used to check if autostart is enabled.
 #[cfg(target_os = "windows")]
 fn check_target_autostart() -> bool {
     let mut autostart_path = match dirs::data_dir() {

@@ -205,7 +205,8 @@ impl structs::AppPages {
 			.width(Length::Fixed(400.0))
 			.into()
 	}
-	
+ 
+  /// Helper function used to create recipe customisation interaface view.
 	fn calc_body<'a>
 		(&'a self, 
 		state: &'a MainLayout, 
@@ -335,6 +336,7 @@ impl structs::AppPages {
 		main.into()
 	}
 	
+  /// Helper function used to create price comparison interaface.
 	fn price_body<'a>
 		(&'a self, 
 		state: &'a MainLayout, 
@@ -385,6 +387,7 @@ impl structs::AppPages {
 			.style(container::rounded_box).into()
 	}
 	
+  /// Helper function used to create description interaface.
 	fn desc_body<'a>
 		(&'a self, 
 		state: &'a MainLayout, 

@@ -1,3 +1,7 @@
+/// Module containing Message enum and all Message handling logic. The update function is used to
+/// select correct functions depending on incoming message argument. Incorrect message value will
+/// cause the application to close.
+
 use iced::{Task, Event};
 use std::sync::LazyLock; // Lazylock to keep Regex in memory
 use crate::*;

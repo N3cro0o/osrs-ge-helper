@@ -9,23 +9,28 @@ use crate::log_mess;
 use super::{check_dir, create_dir};
 use super::{DATA_DIR, RECIPES_DIR, FAVDATA_DIR, ITEM_FILE, THRES_FILE, ALCH_FILE, CONFIG_DIR, CONFIG_FILE};
 
+/// Wrapper struct used to properly save given information to XML file format. Used for Vec<>
+/// structs mostly.
 #[derive(Serialize, Deserialize)]
 struct Wrapper<T: std::clone::Clone> {
 	data: Vec<T>,
 }
 
 impl<T: std::clone::Clone> Wrapper<T> {
+  /// Creates Wrapper struct from given reference to Vec<> struct.
 	pub fn from(data: &Vec<T>) -> Self {
 		Wrapper {
 			data: data.to_vec()
 		}
 	}
 	
+  /// Clones inner data field and returns clone.
 	pub fn return_data(&self) -> Vec<T> {
 		self.data.clone()
 	}
 }
 
+/// Saves Calculator page recipe into a xml file. Created file is stored in recipes directory.
 pub fn save_recipe(data: &RecipeHolder) -> io::Result<()> {
 	let mut path = get_local_data_dir()?;
 	path.push(RECIPES_DIR);
@@ -43,6 +48,7 @@ pub fn save_recipe(data: &RecipeHolder) -> io::Result<()> {
 	Ok(())
 }
 
+/// Saves Calculator page recipe into a xml file. Created file is stored in recipes directory.
 pub fn save_view_items(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
   save_view_items_thresholds(data)?;
   log_mess!["Saving main ItemView data..."];
@@ -64,6 +70,7 @@ pub fn save_view_items(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
 	Ok(())
 }
 
+/// Saves ItemView threshold data into a xml file. Created file is stored in favdata directory.
 fn save_view_items_thresholds(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
     log_mess!["Saving ItemView threshold data..."];
     let new_vec: Vec<osrs::DataThresholdHolder> = data.iter().map(|item| item.into()).collect();
@@ -84,6 +91,7 @@ fn save_view_items_thresholds(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
     Ok(())
 }
 
+/// Saves Alchemy saved items data into a xml file. Created file is stored in favdata directory.
 pub fn save_alchemy(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
 	let mut path = get_local_data_dir()?;
 	path.push(FAVDATA_DIR);
@@ -102,6 +110,7 @@ pub fn save_alchemy(data: &Vec<osrs::DataHolder>) -> io::Result<()> {
 	Ok(())
 }
 
+/// Saves configuration settigs into a xml file. Created file is stored in config directory.
 pub fn save_config(data: &ConfigSettings) -> io::Result<()>{
 	let mut path = get_local_data_dir()?;
   if cfg!(debug_assertions) {
@@ -123,6 +132,8 @@ pub fn save_config(data: &ConfigSettings) -> io::Result<()>{
 	Ok(())
 }
 
+/// Function used to read xml files containing Calculator recipes. Information stored inside them
+/// are parsed to String and are returned as io::Result<Vec<String>>.
 pub fn load_recipes_vec() -> io::Result<Vec<String>> {
 	let mut vec = vec![];
 	let mut path = get_local_data_dir()?;
@@ -148,6 +159,8 @@ pub fn load_recipes_vec() -> io::Result<Vec<String>> {
 	Ok(vec)
 }
 
+/// Function used to read xml file containing ItemView saved items data. Information stored inside them
+/// are parsed to crate::osrs::DataHolder and are returned as io::Result<Vec<T>>.
 pub fn load_view_items() -> io::Result<Vec<osrs::DataHolder>> {
   let mut thresh_vec = load_view_items_threshold()?;
   thresh_vec.sort_by_key(|item| item.id);
@@ -170,6 +183,7 @@ pub fn load_view_items() -> io::Result<Vec<osrs::DataHolder>> {
 	Ok(v)
 }
 
+/// Function used to merge threshold data with ItemView saved vector.
 fn merge_threshold(vec: &mut Vec<osrs::DataHolder>, thresh: Vec<osrs::DataThresholdHolder>) {
     let mut i = 0;
     let mut j = 0;
@@ -189,6 +203,8 @@ fn merge_threshold(vec: &mut Vec<osrs::DataHolder>, thresh: Vec<osrs::DataThresh
     log_mess!["Done"]
 }
 
+/// Function used to read xml file containing ItemView threshold data. Information stored inside them
+/// are parsed to crate::osrs::DataThresholdHolderHolder and are returned as io::Result<Vec<T>>.
 fn load_view_items_threshold() -> io::Result<Vec<osrs::DataThresholdHolder>> {
 	let mut path = get_local_data_dir()?;
 	path.push(FAVDATA_DIR);
@@ -206,6 +222,8 @@ fn load_view_items_threshold() -> io::Result<Vec<osrs::DataThresholdHolder>> {
 	Ok(wrapper.return_data())
 }
 
+/// Function used to read xml file containing Alchemy saved items data. Information stored inside them
+/// are parsed to crate::osrs::DataHolder and are returned as io::Result<Vec<T>>.
 pub fn load_alchemy() -> io::Result<Vec<osrs::DataHolder>> {
 	let mut path = get_local_data_dir()?;
 	path.push(FAVDATA_DIR);
@@ -223,6 +241,8 @@ pub fn load_alchemy() -> io::Result<Vec<osrs::DataHolder>> {
 	Ok(wrapper.return_data())
 }
 
+/// Function used to read xml file containing Calculator recipe data with given ID. Information stored inside them
+/// are parsed to crate::structs::RecipeHolder and are returned as io::Result<T>.
 pub fn load_recipe(id: usize) -> io::Result<RecipeHolder> {
 	let vec = load_recipes_vec()?;
 	let mut target: Option<String> = None;
@@ -249,6 +269,8 @@ pub fn load_recipe(id: usize) -> io::Result<RecipeHolder> {
 	Ok(data)
 }
 
+/// Function used to read xml file containing configuration settigs data. Information stored inside them
+/// are parsed to crate::osrs::ConfigSettings and are returned as io::Result<Vec<T>>.
 pub fn load_config() -> io::Result<ConfigSettings>{
 	let mut path = get_local_data_dir()?;
 	path.push(CONFIG_DIR);
@@ -266,6 +288,7 @@ pub fn load_config() -> io::Result<ConfigSettings>{
 	Ok(wrapper)
 }
 
+/// Deletes xml file containing Calculator recipe data with given ID.
 pub fn delete_recipe(id: usize) -> io::Result<()> {
 	let vec = load_recipes_vec()?;
 	let mut target: Option<String> = None;
@@ -286,6 +309,7 @@ pub fn delete_recipe(id: usize) -> io::Result<()> {
 	Ok(())
 }
 
+/// Function used to delete ALL saved Calculator recipes.
 pub fn delete_all_recipes() -> io::Result<()> {
 	let mut path = get_local_data_dir()?;
 	path.push(RECIPES_DIR);
@@ -296,6 +320,7 @@ pub fn delete_all_recipes() -> io::Result<()> {
 	Ok(())
 }
 
+/// Function used to delete ALL ItemView saved items.
 pub fn delete_item_view() -> io::Result<()> {
 	let mut path = get_local_data_dir()?;
 	path.push(FAVDATA_DIR);
@@ -304,6 +329,7 @@ pub fn delete_item_view() -> io::Result<()> {
 	Ok(())
 }
 
+/// Function used to delete ALL Alchemy saved items.
 pub fn delete_alchemy() -> io::Result<()> {
 	let mut path = get_local_data_dir()?;
 	path.push(FAVDATA_DIR);
@@ -312,7 +338,7 @@ pub fn delete_alchemy() -> io::Result<()> {
 	Ok(())
 }
 
-
+/// Function used to get User's local directory.
 pub fn get_local_data_dir() -> io::Result<path::PathBuf> {
 	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
 	let mut path = path::PathBuf::from(path);

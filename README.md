@@ -44,6 +44,8 @@ using current GE prices. Users can use already created recipes as resources and 
   * ~Add window icon pings (on toolbar)~
   * Add sound pings
 * ~Fix layout being stretched while changing resolution~
+* Change API calls
+
 ### Optional
 
 * Localization

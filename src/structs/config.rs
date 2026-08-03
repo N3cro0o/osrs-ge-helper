@@ -95,7 +95,8 @@ impl structs::AppPages {
 			]);
 		center(column![main, update_button].padding(APP_PADDING)).style(container::rounded_box).into()
 	}
-	
+
+  /// Helper function used to create general application settings subpage.
 	fn app_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message>  {
 		let path = match crate::files::get_local_data_dir() {
 			Ok(p) => format!("{}", p.into_os_string().display()),
@@ -152,6 +153,7 @@ impl structs::AppPages {
       .align_x(Center)
 	}
 	
+  /// Helper function used to create window application settings subpage.
 	fn window_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message> {
 		let combo = combo_box(
         &state.config_window_combo_data,
@@ -183,6 +185,7 @@ impl structs::AppPages {
       .align_x(Center)
 	}
 	
+  /// Helper function used to create notification application settings subpage.
 	fn ping_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message> {
 		column![
 		    toggler(state.extra_bool_1)
@@ -206,6 +209,7 @@ impl structs::AppPages {
       .align_x(Center)
 	}
 	
+  /// Helper function used to create application customisation subpage.
 	fn customization_settings_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message> {
 		column![
         text("Select app theme"),
@@ -220,6 +224,7 @@ impl structs::AppPages {
 			.spacing(APP_SPACING)
 	}
 	
+  /// Helper function used to create credits subpage.
 	fn credits_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
 		let c = column![
         text("Where you can find me").size(24).width(Length::Fill).center(),
@@ -247,6 +252,7 @@ impl structs::AppPages {
 
 }
 
+/// Function used to handle sending a message to accept new settings
 fn accept_press(state: &'_ MainLayout) -> Option<Message> {
   if state.is_config_changed {
       Some(Message::AcceptNewSettings)
@@ -256,6 +262,7 @@ fn accept_press(state: &'_ MainLayout) -> Option<Message> {
   }
 }
 
+/// Function used to handle sending a message to reject new settings
 fn reject_press(state: &'_ MainLayout) -> Option<Message>{
   if state.is_config_changed {
       Some(Message::RejectNewSettings)

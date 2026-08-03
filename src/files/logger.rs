@@ -1,5 +1,3 @@
-// TODO merge logger and save mod into file_handle mod
-
 use std::io::{self, Error, ErrorKind, Write};
 use std::{path, fs};
 
@@ -8,6 +6,13 @@ use chrono;
 use super::{check_dir, create_dir};
 use super::{DATA_DIR, LOGGER_DIR, LOG_FILE_NAME};
 
+/// Custom macro used to generate Message log messages. This macro is exported to base crate module
+/// so no additional imports are required.  
+/// Basic messages and format messages are implemented
+/// ```rust
+/// log_mess!["This is a message"];
+/// log_mess!["This is also a message with extra information: {}", 2137];
+/// ```
 #[macro_export]
 macro_rules! log_mess {
 	($mesg:expr) => {
@@ -35,6 +40,14 @@ macro_rules! log_mess {
 	};
 }
 
+/// Custom macro used to generate Error log messages. This macro is exported to base crate module
+/// so no additional imports are required. For now the only difference is big ERROR text before the
+/// log message.  
+/// Basic messages and format messages are implemented
+/// ```rust
+/// log_err!["This is a message"];
+/// log_err!["This is also a message with extra information: {}", 0];
+/// ```
 #[macro_export]
 macro_rules! log_err {
 	($mesg:expr) => {
@@ -62,6 +75,8 @@ macro_rules! log_err {
 	};
 }
 
+/// Function used to prepare log directory and file. Checks the existing files and deletes the
+/// oldest one if the limit is reached.
 pub fn setup() -> io::Result<()> {
 	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
 	let mut path = path::PathBuf::from(path);
@@ -98,6 +113,7 @@ pub fn setup() -> io::Result<()> {
 	Ok(())
 }
 
+/// Writes Message log message to log file. Returns standard std::io::Result struct.
 pub fn log_message_str(mut string: String) -> io::Result<()> {
 	string += "\n";
 	print!("{}", string);
@@ -111,6 +127,7 @@ pub fn log_message_str(mut string: String) -> io::Result<()> {
 	Ok(())
 }
 
+/// Writes Error log message to log file. Returns standard std::io::Result struct.
 pub fn log_error_str(mut string: String) -> io::Result<()> {
 	string += "\n";
 	eprint!("{}", string);
@@ -124,6 +141,8 @@ pub fn log_error_str(mut string: String) -> io::Result<()> {
 	Ok(())
 }
 
+/// Function used to get Vec<String> struct containing all files inside log directory. The output is
+/// wrapped with standard std::io::Result<>.
 fn get_logs_files_vec(path: &path::PathBuf) -> io::Result<Vec<String>> {
 	let mut vec = vec![];
 	for entry in fs::read_dir(&path)? {
@@ -144,6 +163,7 @@ fn get_logs_files_vec(path: &path::PathBuf) -> io::Result<Vec<String>> {
 	Ok(vec)
 }
 
+/// Deletes target file.
 fn delete_log(file: String) -> io::Result<()> {
   println!["To del: {}", file];
 	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;

@@ -1,3 +1,6 @@
+/// Module used to wrap submodules functions and to create additional abstraction layer. For more
+/// information check files::save and files::logger.
+
 mod save;
 #[macro_use]
 mod logger;
