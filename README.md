@@ -38,13 +38,14 @@ using current GE prices. Users can use already created recipes as resources and 
 * Add button images
   * Member item filter
   * Save / favourite
-* Write docs comments
+* ~Write docs comments~
 * ~Add ItemView notifications system~
 * Notifications
   * ~Add window icon pings (on toolbar)~
   * Add sound pings
 * ~Fix layout being stretched while changing resolution~
 * Change API calls
+* ~Add image embedding into executable~
 
 ### Optional
 

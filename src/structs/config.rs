@@ -225,18 +225,18 @@ impl structs::AppPages {
 	}
 	
   /// Helper function used to create credits subpage.
-	fn credits_body<'a>(&self, _state: &'a MainLayout) -> Column<'a, Message> {
+	fn credits_body<'a>(&self, state: &'a MainLayout) -> Column<'a, Message> {
 		let c = column![
         text("Where you can find me").size(24).width(Length::Fill).center(),
         row![
             space::horizontal(),
-            button(iced::widget::image("img/itch.png").width(Length::Fixed(IMAGE_SIZE_WIDTH)))
+            button(iced::widget::image(state.images_map.get("itch.io").unwrap().clone()).width(Length::Fixed(IMAGE_SIZE_WIDTH)))
               .on_press(Message::OpenWebPage(WebPage::Itch))
               .style(button::text),
-            button(iced::widget::image("img/twitter.png").width(Length::Fixed(IMAGE_SIZE_WIDTH)))
+            button(iced::widget::image(state.images_map.get("twitter").unwrap().clone()).width(Length::Fixed(IMAGE_SIZE_WIDTH)))
               .on_press(Message::OpenWebPage(WebPage::Twitter))
               .style(button::text),
-            button(iced::widget::image("img/github.png").width(Length::Fixed(IMAGE_SIZE_WIDTH)))
+            button(iced::widget::image(state.images_map.get("github").unwrap().clone()).width(Length::Fixed(IMAGE_SIZE_WIDTH)))
               .on_press(Message::OpenWebPage(WebPage::Github))
               .style(button::text),
             space::horizontal(),

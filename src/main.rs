@@ -3,7 +3,9 @@
 use iced::{Element, Center, Size, Pixels, Theme, Subscription, Task};
 use iced::widget::{button, column, row, text, space, container, combo_box, stack, center};
 use iced::widget::text_editor::{self, Content};
+use iced::widget::image::Handle;
 use std::time::{Instant, Duration};
+use std::collections::HashMap;
 
 use num_format::{Locale, ToFormattedString};
 
@@ -88,6 +90,8 @@ pub struct MainLayout {
 	pub extra_bool: bool, // In Calc => delete mode, Alch => hide lossy items
 	pub extra_bool_1: bool, // In Alch => hide non-members items
 	pub extra_bool_2: bool, // In Alch => show only favourites
+
+  pub images_map: HashMap<String, Handle>,
 }
 
 impl MainLayout {
@@ -178,6 +182,8 @@ impl MainLayout {
           extra_bool: false,
           extra_bool_1: false,
           extra_bool_2: false,
+        
+          images_map: Self::prepare_image_handle_map(),
         };
         let _ = layout.update(Message::RefreshData);
         layout.select_new_item(&osrs::DataHolder::bond_holder());
@@ -185,6 +191,16 @@ impl MainLayout {
         let _ = layout.apply_new_settings(false);
         log_mess!["Layout initialized"];
         layout
+    }
+
+    fn prepare_image_handle_map() -> HashMap<String, Handle> {
+        let mut map = HashMap::new();
+        if cfg!(target_os = "windows") {
+            map.insert("itch.io".to_string(), Handle::from_bytes(include_bytes!("../img/itch.png").to_vec()));
+            map.insert("github".to_string(), Handle::from_bytes(include_bytes!("../img/github.png").to_vec()));
+            map.insert("twitter".to_string(), Handle::from_bytes(include_bytes!("../img/twitter.png").to_vec()));
+        }
+        map
     }
 
     /// Function used to return stored title inside struct MainLayout
