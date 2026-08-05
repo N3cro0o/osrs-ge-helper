@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+#![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
 use iced::{Element, Center, Size, Pixels, Theme, Subscription, Task};
 use iced::widget::{button, column, row, text, space, container, combo_box, stack, center};
@@ -156,7 +156,7 @@ impl MainLayout {
           saved_items_item_view: vec_item_view,
           combo_current_filter_item_view: None,
           selected_item_timeseries_data: None,
-          selected_timeseries: osrs::Timeseries::FiveMin,
+          selected_timeseries: osrs::Timeseries::SixHour,
           selected_item_favourite: false,
 
           fav_items_alchemy: vec_alch,
@@ -514,7 +514,7 @@ impl MainLayout {
 	
   /// Function fetches history data for given item. After that function updates plotter label and data.
 	fn get_timeseries_data(&mut self, item: &osrs::DataHolder) -> Result<(), String> {
-		let url = format!("https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep={}&id={}", self.selected_timeseries, item.id);
+		let url = format!("https://prices.runescape.wiki/api/v2/osrs/timeseries?lookback={}&id={}", self.selected_timeseries, item.id);
 		let response = match self.fetch_get_data(&url) {
 			Ok(resp) => resp,
 			Err(err) => {
@@ -729,7 +729,7 @@ impl MainLayout {
 	
   /// One of the update functions. Fetches mapping data.
 	fn refresh_item_data(&mut self) -> Result<usize, String> {
-		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v1/osrs/mapping") {
+		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/mapping") {
 			Ok(resp) => resp,
 			Err(err) => {
 				return Err(err.to_string());
@@ -752,7 +752,7 @@ impl MainLayout {
 	
   /// One of the update functions. Fetches GE volume data.
 	fn refresh_volume_data(&mut self) -> Result<(), String> {
-		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v1/osrs/volumes") {
+		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/volumes") {
 			Ok(resp) => resp,
 			Err(err) => {
 				return Err(err.to_string());
@@ -774,7 +774,7 @@ impl MainLayout {
 
   /// One of the update functions. Fetches GE low and high price data.
 	fn refresh_latest_data(&mut self) -> Result<(), String> {
-		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v1/osrs/latest") {
+		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/latest") {
 			Ok(resp) => resp,
 			Err(err) => {
 				return Err(err.to_string());

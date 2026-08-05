@@ -144,7 +144,7 @@ impl structs::AppPages {
 			]
 			.spacing(APP_SPACING);
 		
-		let bttn_label_vec = vec!["1 day", "7 days", "30 days", "1 year"];
+		let bttn_label_vec = vec!["6 hours", "1 day", "7 days", "30 days", "6 months", "1 year"];
 		let mut bttn_vec: Vec<Element<'_, Message>> = vec![];
 		{
 			let mut index = 0;

@@ -54,26 +54,30 @@ pub struct LatestData {
 /// Enum used to implement historic data offset used for plotting information.
 #[derive(PartialEq, Clone, Debug)]
 pub enum Timeseries {
-	FiveMin,
-	OneHour,
 	SixHour,
 	TwentyFourHours,
+  SevenDays,
+  ThirtyDays,
+  SixMonths,
+  OneYear,
 }
 
 impl Timeseries {
 	#[allow(non_snake_case)]
-	pub const fn ALL() -> [Self; 4] {
-		[Self::FiveMin, Self::OneHour, Self::SixHour, Self::TwentyFourHours]
+	pub const fn ALL() -> [Self; 6] {
+		[Self::SixHour, Self::TwentyFourHours, Self::SevenDays, Self::ThirtyDays, Self::SixMonths, Self::OneYear]
 	}
 }
 
 impl std::fmt::Display for Timeseries {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let string = match self {
-			Timeseries::FiveMin => String::from("5m"),
-			Timeseries::OneHour => String::from("1h"),
 			Timeseries::SixHour => String::from("6h"),
 			Timeseries::TwentyFourHours => String::from("24h"),
+			Timeseries::SevenDays => String::from("7d"),
+			Timeseries::ThirtyDays => String::from("30d"),
+			Timeseries::SixMonths => String::from("6m"),
+			Timeseries::OneYear => String::from("1y"),
 		};
 		write!(f, "{}", string)
 	}
@@ -246,8 +250,8 @@ impl TimeseriesData {
 	}
 	
 	pub fn get_time_tuple(&self) -> (usize, usize) {
-		let first = self.data[0].timestamp;
-		let last = self.data[364].timestamp;
+		let first = self.data.first().unwrap().timestamp;
+		let last = self.data.last().unwrap().timestamp;
 		(first, last)
 	}
 }
