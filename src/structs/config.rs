@@ -204,6 +204,14 @@ impl structs::AppPages {
             .on_toggle_maybe(if state.config_settings.notifications.enable { Some(Message::ConfigToggleSoundNotification) }
                 else { None })
             .label("Enable sound notifications"),
+        row![
+            text("Sound notification volume"),
+            space::horizontal().width(Length::Fixed(25.0)),
+            slider(0.0 ..= 1.0, state.extra_float, Message::ConfigChangeAudioVolume)
+                .step(0.001),
+            ]
+            .spacing(APP_SPACING),
+        space::vertical().height(Length::Fixed(25.0)),
         button("Test audio").on_press_maybe(if state.config_settings.notifications.enable && state.config_settings.notifications.sound_enable
                 {
                     Some(Message::ConfigCheckAudio)
@@ -211,8 +219,6 @@ impl structs::AppPages {
                     None
                 }
             ),
-        slider(0.0 ..= 1.0, state.extra_float, Message::ConfigChangeAudioVolume)
-            .step(0.001),
 			]
 			.spacing(APP_SPACING)
       .align_x(Center)

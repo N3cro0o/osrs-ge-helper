@@ -528,8 +528,11 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
     }
 
     Message::ConfigChangeAudioVolume(volume) => {
-        state.extra_float = volume;
-        state.is_config_changed = true;
+        let notifs = &state.config_settings.notifications;
+        if notifs.enable && notifs.sound_enable {
+            state.extra_float = volume;
+            state.is_config_changed = true;
+        }
     }
     
     Message::ConfigCheckAudio => {
