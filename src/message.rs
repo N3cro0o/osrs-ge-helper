@@ -66,6 +66,9 @@ pub enum Message {
   OpenExplorer(String),
   ConfigChangeAutoStartup(bool),
   ConfigToggleAllNotification(bool),
+  ConfigToggleSoundNotification(bool),
+  ConfigChangeAudioVolume(f32),
+  ConfigCheckAudio,
   AcceptNewSettings,
   RejectNewSettings,
 	RickTelemetryToggle(bool),
@@ -73,6 +76,7 @@ pub enum Message {
 	ChangePlotterTimeseries(osrs::Timeseries),
 	ChangeExtraString(String),
   ChangeExtraString3(String),
+  ChangeExtraFloat(f32),
 	ShowPopup,
 	HidePopup,
 	ChangeConfigPage(ConfigPages),
@@ -170,6 +174,7 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 		}
 
     Message::PingTick(_now) => {
+        log_mess!["Notification update ping"];
         if let Some(t) = state.check_item_view_prices() {
             return t;
         }
@@ -517,6 +522,22 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
         state.is_config_changed = true;
     }
 
+    Message::ConfigToggleSoundNotification(check) => {
+        state.extra_bool_2 = check;
+        state.is_config_changed = true;
+    }
+
+    Message::ConfigChangeAudioVolume(volume) => {
+        state.extra_float = volume;
+        state.is_config_changed = true;
+    }
+    
+    Message::ConfigCheckAudio => {
+        if let Err(err) = crate::audio::test_audio(state.extra_float) {
+            log_err!["Error while playing audio: {}", err];
+        }
+    }
+
 		Message::OpenExplorer(path) => {
 			log_mess!["Openning file explorer in {}", &path];
 			if let Err(err) = open::that(path) {
@@ -550,6 +571,10 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 			state.extra_string_3 = string;
 		}
 		
+    Message::ChangeExtraFloat(float) => {
+        state.extra_float = float;
+    }
+
 		Message::ResetItemView => {
 			log_mess!["Deleting ItemView data..."];
 			if let Err(err) = files::delete_item_view() {

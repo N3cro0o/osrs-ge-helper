@@ -17,6 +17,7 @@ impl structs::AppPages {
 				button(text(data.short_description()))
 				.on_press_with(|| Message::SelectItem(data.clone()))
 				.width(Length::Fixed(500.0))
+        .style(if data.threshold_reached { button::danger } else { button::primary })
 				.into()
 				);
 		}

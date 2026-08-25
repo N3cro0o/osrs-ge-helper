@@ -18,6 +18,8 @@ plotters = "0.3.7"
 chrono = "0.4.44"
 open = "5"
 regex = "1.12.3"
+rodio = "0.22.2"
+rand = "0.10.0"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62.2", features = ["Win32_UI_Shell", "Win32_System_Com", "Win32_Foundation"]}

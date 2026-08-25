@@ -18,6 +18,7 @@ pub mod structs;
 pub mod files;
 pub mod os;
 pub mod ping;
+pub mod audio;
 
 use message::Message;
 use structs::{SearchFilter, AppPages, CurrentRecipe, ItemViewPlot, WindowSizes};
@@ -90,6 +91,7 @@ pub struct MainLayout {
 	pub extra_bool: bool, // In Calc => delete mode, Alch => hide lossy items
 	pub extra_bool_1: bool, // In Alch => hide non-members items
 	pub extra_bool_2: bool, // In Alch => show only favourites
+  pub extra_float: f32,
 
   pub images_map: HashMap<String, Handle>,
 }
@@ -182,7 +184,8 @@ impl MainLayout {
           extra_bool: false,
           extra_bool_1: false,
           extra_bool_2: false,
-        
+          extra_float: 0.0,
+
           images_map: Self::prepare_image_handle_map(),
         };
         let _ = layout.update(Message::RefreshData);
@@ -408,6 +411,8 @@ impl MainLayout {
 				self.plotter.reset_data();
 				self.extra_bool = self.config_settings.autostart;
 				self.extra_bool_1 = self.config_settings.notifications.enable;
+        self.extra_bool_2 = self.config_settings.notifications.sound_enable;
+        self.extra_float = self.config_settings.notifications.sound_volume;
 			}
 		}
 		self.current_page = page;
@@ -459,6 +464,8 @@ impl MainLayout {
 		self.config_settings.resolution = (width as f32, height as f32);
     self.config_settings.autostart = self.extra_bool;
     self.config_settings.notifications.enable = self.extra_bool_1;
+    self.config_settings.notifications.sound_enable = self.extra_bool_2;
+    self.config_settings.notifications.sound_volume = self.extra_float;
 		let res = self.config_settings.resolution();
 		Ok(iced::window::latest().and_then(move |id| iced::window::resize::<Message>(id, res)))
 	}
@@ -841,15 +848,17 @@ pub fn get_alch_fav_vec(&self) -> Vec<String> {
   }
 
   /// One of the notification functions. Function used to check if saved item price is lower than
-  /// User selected threshold and returns adequate Task.
-  pub fn check_item_view_prices(&self) -> Option<Task<Message>> {
+  /// User selected threshold and returns adequate Task. Additionally selected items are marked for
+  /// easier categorisation.
+  pub fn check_item_view_prices(&mut self) -> Option<Task<Message>> {
       let mut task_to_return = None;
-      for item in self.saved_items_item_view.iter() {
+      for item in self.saved_items_item_view.iter_mut() {
         if let None = item.price_threshold { continue; }
         let thresh = item.price_threshold.unwrap();
         let data = self.latest_ge_data.get_data_by_id(item.id).unwrap();
         if data.buy_price().unwrap() < thresh {
-            task_to_return = Some(ping::send_notification(&item.name, data.buy_price().unwrap()));
+            item.threshold_reached = true;
+            task_to_return = Some(ping::send_notification(&item.name, data.buy_price().unwrap(), &self.config_settings.notifications));
         }
       }
       task_to_return
@@ -863,7 +872,6 @@ impl Default for MainLayout {
 }
 
 fn main() -> iced::Result<> {
-	unsafe {std::env::set_var("RUST_BACKTRACE", "0");}
 	if let Err(err) = files::setup_logger() { return Err(iced::Error::ExecutorCreationFailed(err)) }; // Good enough for now, I believe more Errors should be added to iced::Error 
 	log_mess!["INIT APP"];
 	
@@ -874,6 +882,10 @@ fn main() -> iced::Result<> {
       ConfigSettings::default()
     }
   };
+
+  if let Err(err) = audio::audio_init() {
+      log_err!["Audio initialization error: {}", err];
+  }
 
   let mut icon_path = std::path::PathBuf::new();
   icon_path.push("img");

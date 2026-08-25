@@ -123,6 +123,7 @@ pub struct ConfigSettings {
 pub struct ConfigSettingsNotifications {
     pub enable: bool,
     pub sound_enable: bool,
+    pub sound_volume: f32,
 }
 
 /// Enum used to hold URL for credits, URL to github repository to check for updates and others.
@@ -576,6 +577,7 @@ impl Default for ConfigSettingsNotifications {
         ConfigSettingsNotifications {
             enable: true,
             sound_enable: true,
+            sound_volume: 1.0,
         }
     }
 }

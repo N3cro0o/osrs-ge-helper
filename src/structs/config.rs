@@ -1,5 +1,5 @@
 use iced::{Element, Length, Center, Theme};
-use iced::widget::{column, row, text, center, pick_list, space, container, button, text_input, Column, combo_box, toggler};
+use iced::widget::{column, slider, row, text, center, pick_list, space, container, button, text_input, Column, combo_box, toggler};
 
 use crate::{Message, MainLayout};
 use crate::{APP_PADDING, APP_SPACING, IMAGE_SIZE_WIDTH, COMBOBOX_MENU_HEIGHT};
@@ -200,10 +200,19 @@ impl structs::AppPages {
                 s
             }),
         space::vertical().height(Length::Fixed(10.0)),
-        toggler(false)
-            .on_toggle_maybe(if state.config_settings.notifications.enable { Some(Message::ConfigToggleAllNotification) }
+        toggler(state.extra_bool_2)
+            .on_toggle_maybe(if state.config_settings.notifications.enable { Some(Message::ConfigToggleSoundNotification) }
                 else { None })
             .label("Enable sound notifications"),
+        button("Test audio").on_press_maybe(if state.config_settings.notifications.enable && state.config_settings.notifications.sound_enable
+                {
+                    Some(Message::ConfigCheckAudio)
+                } else {
+                    None
+                }
+            ),
+        slider(0.0 ..= 1.0, state.extra_float, Message::ConfigChangeAudioVolume)
+            .step(0.001),
 			]
 			.spacing(APP_SPACING)
       .align_x(Center)

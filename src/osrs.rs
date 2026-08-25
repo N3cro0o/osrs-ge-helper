@@ -18,6 +18,8 @@ pub struct DataHolder {
 	highalch: Option<usize>,
   #[serde(skip)]
   pub price_threshold: Option<usize>,
+  #[serde(skip)]
+  pub threshold_reached: bool,
 }
 
 /// Auxiliary struct expanding DataHolder with custom User price threshold. Used for notifications.
@@ -118,6 +120,7 @@ impl DataHolder {
           value: None,
           highalch: None,
           price_threshold: None,
+          threshold_reached: false,
       }
   }
 
