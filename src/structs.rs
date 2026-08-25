@@ -5,6 +5,7 @@ use iced::{Element, Length, Theme};
 use iced::widget::{text, center, container};
 
 use plotters::{coord::Shift, prelude::*};
+use plotters::style::{ShapeStyle, RGBAColor};
 use plotters_backend::DrawingBackend;
 use plotters_iced2 as plotters_iced;
 use plotters_iced::{plotters_backend, Chart, ChartWidget, DrawingArea};
@@ -89,9 +90,9 @@ pub enum CurrentRecipe {
 }
 
 /// Auxiliary struct used to properly show timeseries data. 
-#[derive(Default)]
 pub struct ItemViewPlot {
 	item_name: String,
+  theme: iced::Theme,
 	data_series: Option<osrs::TimeseriesData>,
 }
 
@@ -164,6 +165,20 @@ impl ItemViewPlot {
 		self.data_series = None;
 		self.item_name = String::new();
 	}
+
+  pub fn new(theme: &iced::Theme) -> Self {
+      ItemViewPlot {
+          item_name: String::new(),
+          theme: theme.clone(),
+          data_series: None
+      }
+  }
+}
+
+impl Default for ItemViewPlot {
+    fn default() -> Self {
+        Self::new(&iced::Theme::CatppuccinFrappe)
+    }
 }
 
 impl Chart<Message> for ItemViewPlot {
@@ -231,14 +246,45 @@ impl Chart<Message> for ItemViewPlot {
 			}
 		};
 		
-        let mut builder = ChartBuilder::on(&root);
+    let palette = self.theme.extended_palette();
+    let colour = palette.primary.base.color;
+    let colour_line;
+    if palette.is_dark {
+        colour_line = palette.danger.base.color;
+    }
+    else {
+        colour_line = palette.danger.base.text;
+    }
+    let colour_weak = palette.primary.weak.color;
+    let chart_colour = RGBAColor((colour.r * 255.0) as u8,
+        (colour.g * 255.0) as u8,
+        (colour.b * 255.0) as u8,
+        colour.a as f64);
+    let chart_colour_line = RGBAColor((colour_line.r * 255.0) as u8,
+        (colour_line.g * 255.0) as u8,
+        (colour_line.b * 255.0) as u8,
+        colour_line.a as f64);
+    let chart_colour_weak = RGBAColor((colour_weak.r * 255.0) as u8,
+        (colour_weak.g * 255.0) as u8,
+        (colour_weak.b * 255.0) as u8,
+        colour_weak.a as f64);
+    let mut builder = ChartBuilder::on(&root);
 		let mut chart = builder
 			.margin(30)
 			.x_label_area_size(30)
 			.y_label_area_size(30)
 			.build_cartesian_2d((x_margin.0)..(x_margin.1), (y_margin.0)..(y_margin.1))
 			.unwrap();
-
+    let bold_style = ShapeStyle {
+        color: chart_colour,
+        filled: true,
+        stroke_width: 2
+    };
+    let light_style = ShapeStyle {
+        color: chart_colour_weak,
+        filled: true,
+        stroke_width: 1
+    };
 		chart
 			.configure_mesh()
 			.x_labels(7)
@@ -250,13 +296,16 @@ impl Chart<Message> for ItemViewPlot {
 				}
 			})
 			.y_labels(5)
+      .bold_line_style(bold_style)
+      .light_line_style(light_style)
+      .axis_style(bold_style)
 			.draw()
 			.unwrap();
 
 		chart
 			.draw_series(LineSeries::new(
 				data,
-				&RED,
+				chart_colour_line,
 			))
 			.unwrap();
     }
