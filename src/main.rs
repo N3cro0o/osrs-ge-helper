@@ -141,7 +141,12 @@ impl MainLayout {
         }
 
         let mut layout = MainLayout {
-          plotter: ItemViewPlot::default(),
+          plotter: ItemViewPlot::new(match conf_loaded.theme {
+            Some(t) => { 
+              if t >= 0 { &Theme::ALL[t as usize] }
+              else { /*TODO add custom palette*/ &Theme::CatppuccinFrappe}
+            }
+            None => &Theme::CatppuccinFrappe,}),
           
           _debug_value: false,
           data: vec![],

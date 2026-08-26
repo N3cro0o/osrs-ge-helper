@@ -509,6 +509,7 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 
     Message::ConfigChangeTheme(theme) => {
         state.config_settings.set_theme(Some(theme));
+        state.plotter.change_theme(&state.theme().unwrap());
         state.is_config_changed = true;
     }
 

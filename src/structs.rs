@@ -156,6 +156,10 @@ impl ItemViewPlot {
 	pub fn change_label(&mut self, item_name: String) {
 		self.item_name = item_name;
 	}
+
+  pub fn change_theme(&mut self, theme: &Theme) {
+      self.theme = theme.clone();
+  }
 	
 	pub fn update_data(&mut self, data: osrs::TimeseriesData) {
 		self.data_series = Some(data);
@@ -247,15 +251,15 @@ impl Chart<Message> for ItemViewPlot {
 		};
 		
     let palette = self.theme.extended_palette();
-    let colour = palette.primary.base.color;
+    let colour = palette.primary.base.text;
     let colour_line;
     if palette.is_dark {
         colour_line = palette.danger.base.color;
     }
     else {
-        colour_line = palette.danger.base.text;
+        colour_line = palette.danger.base.color;
     }
-    let colour_weak = palette.primary.weak.color;
+    let colour_weak = palette.secondary.weak.text;
     let chart_colour = RGBAColor((colour.r * 255.0) as u8,
         (colour.g * 255.0) as u8,
         (colour.b * 255.0) as u8,
@@ -295,7 +299,23 @@ impl Chart<Message> for ItemViewPlot {
 					None => x.to_string(),
 				}
 			})
+      .y_label_formatter(&|y| {
+          match y {
+              1_000_000.. => {
+                  return format!("{}m", (*y as f32 / 10_000.0).round() / 100.0);
+              }
+
+              10_000..1_000_000 => {
+                  return format!("{}k", (*y as f32 / 1000.0).round());
+              }
+
+              _ => {
+                  return y.to_string();
+              }
+          }
+      })
 			.y_labels(5)
+      .max_light_lines(5)
       .bold_line_style(bold_style)
       .light_line_style(light_style)
       .axis_style(bold_style)
