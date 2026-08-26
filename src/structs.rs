@@ -289,6 +289,11 @@ impl Chart<Message> for ItemViewPlot {
         filled: true,
         stroke_width: 1
     };
+    let line_style = ShapeStyle {
+        color: chart_colour_line,
+        filled: true,
+        stroke_width: 2
+    };
 		chart
 			.configure_mesh()
 			.x_labels(7)
@@ -325,7 +330,7 @@ impl Chart<Message> for ItemViewPlot {
 		chart
 			.draw_series(LineSeries::new(
 				data,
-				chart_colour_line,
+				line_style,
 			))
 			.unwrap();
     }

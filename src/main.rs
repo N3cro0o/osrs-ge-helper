@@ -279,7 +279,11 @@ impl MainLayout {
 								)
 							.padding([5,10]),
 						space::horizontal(),
-						text(format!("Bond price: {} gp", self.bond_sell_price.unwrap_or_default().to_formatted_string(&Locale::en))),
+						button(text(format!(
+                "Bond price: {} gp", 
+                self.bond_sell_price.unwrap_or_default().to_formatted_string(&Locale::en))))
+                .on_press(Message::SelectItem(osrs::DataHolder::bond_holder().clone()))
+                .style(button::text),
 						button(text("Refresh data").size(20))
 							.padding([5, 10])
 							.on_press(Message::RefreshData)
