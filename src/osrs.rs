@@ -234,6 +234,12 @@ impl fmt::Display for GEData {
 	}
 }
 
+impl PartialEq for VolumeData {
+    fn eq(&self, other: &Self) -> bool {
+        self.timestamp == other.timestamp
+    }
+}
+
 impl VolumeData {
 	pub fn find(&self, id: usize) -> Option<usize> {
 		let id_str: String = id.to_string();
@@ -241,10 +247,22 @@ impl VolumeData {
 	}
 }
 
+impl PartialEq for LatestData {
+    fn eq(&self, other: &Self) -> bool {
+        self.data.keys().collect::<Vec<_>>() == other.data.keys().collect::<Vec<_>>()
+    }
+}
+
 impl LatestData {
 	pub fn get_data_by_id(&self, id: usize) -> Option<GEData> {
 		self.data.get(&id.to_string()).copied()
 	}
+}
+
+impl PartialEq for TimeseriesData {
+    fn eq(&self, other: &Self) -> bool {
+        self.item_id == other.item_id
+    }
 }
 
 impl TimeseriesData {

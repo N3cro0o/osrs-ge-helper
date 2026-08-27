@@ -286,7 +286,7 @@ impl MainLayout {
                 .style(button::text),
 						button(text("Refresh data").size(20))
 							.padding([5, 10])
-							.on_press(Message::RefreshData)
+							.on_press(Message::RefreshDataAsync)
 					]
 					.padding(APP_PADDING)
 					.spacing(APP_SPACING)
@@ -531,7 +531,7 @@ impl MainLayout {
   /// Function fetches history data for given item. After that function updates plotter label and data.
 	fn get_timeseries_data(&mut self, item: &osrs::DataHolder) -> Result<(), String> {
 		let url = format!("https://prices.runescape.wiki/api/v2/osrs/timeseries?lookback={}&id={}", self.selected_timeseries, item.id);
-		let response = match self.fetch_get_data(&url) {
+		let response = match Self::fetch_get_data(&url) {
 			Ok(resp) => resp,
 			Err(err) => {
 				return Err(err.to_string());
@@ -743,9 +743,32 @@ impl MainLayout {
 		}
 	}
 	
+  async fn refresh_plotter_data_async(item_option: Option<osrs::DataHolder>, timeseries: osrs::Timeseries) -> Result<osrs::TimeseriesData, String> {
+		let item = match item_option {
+        Some(i) => i,
+        None => { return Err("No selected item".to_string()); }
+    };
+    let url = format!("https://prices.runescape.wiki/api/v2/osrs/timeseries?lookback={}&id={}", timeseries, item.id);
+		let response = match Self::fetch_get_data(&url) {
+			Ok(resp) => resp,
+			Err(err) => {
+				return Err(err.to_string());
+			}
+		};
+		if !response.status().is_success(){
+			return Err(format!("Response failed. {}", response.status()));
+		}
+		let body = response.text().unwrap();
+		let data = match serde_json::from_str::<osrs::TimeseriesData>(&body){
+			Ok(data) => data,
+			Err(err) => return Err(format!("{}\n{}", err.to_string(), body)),
+		};
+		Ok(data)
+  }
+
   /// One of the update functions. Fetches mapping data.
 	fn refresh_item_data(&mut self) -> Result<usize, String> {
-		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/mapping") {
+		let response = match Self::fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/mapping") {
 			Ok(resp) => resp,
 			Err(err) => {
 				return Err(err.to_string());
@@ -765,10 +788,30 @@ impl MainLayout {
 		self.data = data;
 		Ok(len)
 	}
+
+  async fn refresh_item_data_async() -> Result<Vec<osrs::DataHolder>, String> {
+		let response = match Self::fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/mapping") {
+			Ok(resp) => resp,
+			Err(err) => {
+				return Err(err.to_string());
+			}
+		};
+		if !response.status().is_success(){
+			return Err(format!("Response failed. {}", response.status()));
+		}
+		let mut data = match response.json::<Vec<osrs::DataHolder>>() {
+			Ok(vec) => vec,
+			Err(err) => {
+				return Err(err.to_string());
+			}
+		};
+		data.sort_by(|a, b| a.id.cmp(&b.id));
+    Ok(data)
+  }
 	
   /// One of the update functions. Fetches GE volume data.
 	fn refresh_volume_data(&mut self) -> Result<(), String> {
-		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/volumes") {
+		let response = match Self::fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/volumes") {
 			Ok(resp) => resp,
 			Err(err) => {
 				return Err(err.to_string());
@@ -786,11 +829,31 @@ impl MainLayout {
 		};
 		self.item_volume = data;
 		Ok(())
-	}	
+	}
+
+  async fn refresh_volume_data_async() -> Result<osrs::VolumeData, String> {
+		let response = match Self::fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/volumes") {
+			Ok(resp) => resp,
+			Err(err) => {
+				return Err(err.to_string());
+			}
+		};
+		if !response.status().is_success(){
+			return Err(format!("Response failed. {}", response.status()));
+		}
+		let body = response.text().unwrap();
+		let data = match serde_json::from_str::<osrs::VolumeData>(&body) {
+			Ok(vec) => vec,
+			Err(err) => {
+				return Err(err.to_string());
+			}
+		};
+		Ok(data)
+  }
 
   /// One of the update functions. Fetches GE low and high price data.
 	fn refresh_latest_data(&mut self) -> Result<(), String> {
-		let response = match self.fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/latest") {
+		let response = match Self::fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/latest") {
 			Ok(resp) => resp,
 			Err(err) => {
 				return Err(err.to_string());
@@ -810,9 +873,29 @@ impl MainLayout {
 		Ok(())
 	}
 	
+	async fn refresh_latest_data_async() -> Result<osrs::LatestData, String> {
+		let response = match Self::fetch_get_data("https://prices.runescape.wiki/api/v2/osrs/latest") {
+			Ok(resp) => resp,
+			Err(err) => {
+				return Err(err.to_string());
+			}
+		};
+		if !response.status().is_success(){
+			return Err(format!("Response failed. {}", response.status()));
+		}
+		let body = response.text().unwrap();
+		let data = match serde_json::from_str::<osrs::LatestData>(&body) {
+			Ok(vec) => vec,
+			Err(err) => {
+				return Err(err.to_string());
+			}
+		};
+		Ok(data)
+	}
+  
   /// Function used to send HTTP requests. Error handling isn't implemented and thus returns
   /// reqwest::Result<Response>.
-	fn fetch_get_data(&self, url: &str) -> reqwest::Result<Response> {
+	pub fn fetch_get_data(url: &str) -> reqwest::Result<Response> {
 		let client = Client::new();
 		let response = client.get(url)
 			.header(USER_AGENT, "N3cro0oDev (necro0o) - GE Price Calc Prototype")
@@ -845,7 +928,7 @@ pub fn get_alch_fav_vec(&self) -> Vec<String> {
 	}
 
   fn check_update(&mut self) {
-    let response = self.fetch_get_data("https://github.com/N3cro0o/osrs-ge-helper/releases/latest");
+    let response = Self::fetch_get_data("https://github.com/N3cro0o/osrs-ge-helper/releases/latest");
     if let Ok(resp) = response {
         if resp.status().is_success() {
           let body = resp.text().unwrap();

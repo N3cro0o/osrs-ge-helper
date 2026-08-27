@@ -1,5 +1,6 @@
 use std::io::{self, Error, ErrorKind, Write};
 use std::{path, fs};
+use std::sync::Mutex;
 
 use chrono;
 
@@ -75,6 +76,8 @@ macro_rules! log_err {
 	};
 }
 
+static LOGGER_MUTEX: Mutex<()> = Mutex::new(());
+
 /// Function used to prepare log directory and file. Checks the existing files and deletes the
 /// oldest one if the limit is reached.
 pub fn setup() -> io::Result<()> {
@@ -115,6 +118,7 @@ pub fn setup() -> io::Result<()> {
 
 /// Writes Message log message to log file. Returns standard std::io::Result struct.
 pub fn log_message_str(mut string: String) -> io::Result<()> {
+  let _m = LOGGER_MUTEX.lock().unwrap();
 	string += "\n";
 	print!("{}", string);
 	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;
@@ -129,6 +133,7 @@ pub fn log_message_str(mut string: String) -> io::Result<()> {
 
 /// Writes Error log message to log file. Returns standard std::io::Result struct.
 pub fn log_error_str(mut string: String) -> io::Result<()> {
+  let _m = LOGGER_MUTEX.lock().unwrap();
 	string += "\n";
 	eprint!("{}", string);
 	let path = dirs::data_dir().ok_or(Error::new(ErrorKind::Other, "Cannot get user data dir"))?;

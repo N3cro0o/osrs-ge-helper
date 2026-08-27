@@ -44,6 +44,10 @@ using current GE prices. Users can use already created recipes as resources and 
 * ~Fix layout being stretched while changing resolution~
 * ~Change API calls~
 * ~Add image embedding into executable~
+* Multithreading for syncing data
+  * Create async functions
+  * Create task chain
+* Linux port
 
 ### Optional
 

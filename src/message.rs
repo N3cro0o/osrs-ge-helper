@@ -11,9 +11,15 @@ use crate::structs::{WebPage, WindowSizes};
 pub enum Message {
 	Nothing,
 	NothingSafe,
-	CurrentTesat,
+  CurrentTesat,
 	RefreshData,
-	AddItem(osrs::DataHolder),
+	RefreshDataAsync,
+	TaskItemDataDone(Result<Vec<osrs::DataHolder>, String>),
+  TaskVolumeDataDone(Result<osrs::VolumeData, String>),
+  TaskLatestDataDone(Result<osrs::LatestData, String>),
+  TaskPlotterDataDone(Result<osrs::TimeseriesData, String>),
+
+  AddItem(osrs::DataHolder),
 	SelectItem(osrs::DataHolder),
 	ChangePage(AppPages),
 	AddItemToSaved,
@@ -94,7 +100,65 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 			state.bond_sell_price = state.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
 			state.create_combo_box_data();
 			state.calculate_best_alchemy();
+
+      // return Task::batch([Task::perform(crate::MainLayout::refresh_item_data_async(), Message::TaskItemDataDone),
+      //   Task::perform(crate::MainLayout::refresh_volume_data_async(), Message::TaskVolumeDataDone),
+      //   Task::perform(crate::MainLayout::refresh_latest_data_async(), Message::TaskLatestDataDone)]);
 		}
+
+    Message::RefreshDataAsync => {
+			log_mess!("Get data from OSRS wiki... this time async...");
+      let item = state.last_item.clone();
+      let ts = state.selected_timeseries.clone();
+      return Task::batch([Task::perform(crate::MainLayout::refresh_item_data_async(), Message::TaskItemDataDone),
+        Task::perform(crate::MainLayout::refresh_volume_data_async(), Message::TaskVolumeDataDone),
+        Task::perform(crate::MainLayout::refresh_latest_data_async(), Message::TaskLatestDataDone),
+        Task::perform(crate::MainLayout::refresh_plotter_data_async(item, ts), Message::TaskPlotterDataDone)]);
+    }
+
+    Message::TaskItemDataDone(result) => {
+        match result {
+            Ok(v) => {
+                log_mess!["Refresh: Mapping done. Found {} items", v.len()];
+            }
+            Err(err) => {
+                log_err!["Mapping refresh: {}", err];
+            }
+        }
+    }
+
+    Message::TaskLatestDataDone(result) => {
+        match result {
+            Ok(v) => {
+                log_mess!["Refresh: Latest done."];
+            }
+            Err(err) => {
+                log_err!["Latest refresh: {}", err];
+            }
+        }
+    }
+
+    Message::TaskVolumeDataDone(result) => {
+        match result {
+            Ok(v) => {
+                log_mess!["Refresh: Volume done."];
+            }
+            Err(err) => {
+                log_err!["Volume refresh: {}", err];
+            }
+        }
+    }
+
+    Message::TaskPlotterDataDone(result) => {
+        match result {
+            Ok(v) => {
+                log_mess!["Refresh: Plotter data done."];
+            }
+            Err(err) => {
+                log_err!["Plotter data refresh: {}", err];
+            }
+        }
+    }
 
 		Message::EventOccurred(_event) => {
 			// Add something here later
