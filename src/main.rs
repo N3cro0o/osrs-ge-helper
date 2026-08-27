@@ -220,7 +220,7 @@ impl MainLayout {
     /// `self.config_settings.app_update_interval` and catches other app events.
     fn subscription(&self) -> Subscription<Message> {
         let update_time = self.config_settings.app_update_interval;
-        let tick = iced::time::every(Duration::from_secs(update_time as u64)).map(Message::RefreshTick);
+        let tick = iced::time::every(Duration::from_secs(update_time as u64)).map(Message::RefreshTickAsync);
         let tick_ping = iced::time::every(Duration::from_secs(update_time as u64)).map(Message::PingTick);
         Subscription::batch(vec![tick, tick_ping, iced::event::listen().map(Message::EventOccurred)])
     }
@@ -611,7 +611,7 @@ impl MainLayout {
     new_vec.push(osrs::DataHolder::bond_holder());
 		self.combo_data = combo_box::State::new(new_vec);
 	}
-	
+
   /// Function used to save favourite item in ItemView in local file system
 	fn save_current_item(&mut self) -> Result<(), (u8, String)> {
 		if let None = self.last_item {

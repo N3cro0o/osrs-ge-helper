@@ -18,6 +18,7 @@ pub enum Message {
   TaskVolumeDataDone(Result<osrs::VolumeData, String>),
   TaskLatestDataDone(Result<osrs::LatestData, String>),
   TaskPlotterDataDone(Result<osrs::TimeseriesData, String>),
+  TaskRefreshDone,
 
   AddItem(osrs::DataHolder),
 	SelectItem(osrs::DataHolder),
@@ -29,6 +30,7 @@ pub enum Message {
 	AlchNewFilter(Option<SearchFilter>),
 	OpenWiki,
 	RefreshTick(Instant),
+  RefreshTickAsync(Instant),
   PingTick(Instant),
 	EventOccurred(Event),
 	ResetItemView,
@@ -113,13 +115,27 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
       return Task::batch([Task::perform(crate::MainLayout::refresh_item_data_async(), Message::TaskItemDataDone),
         Task::perform(crate::MainLayout::refresh_volume_data_async(), Message::TaskVolumeDataDone),
         Task::perform(crate::MainLayout::refresh_latest_data_async(), Message::TaskLatestDataDone),
-        Task::perform(crate::MainLayout::refresh_plotter_data_async(item, ts), Message::TaskPlotterDataDone)]);
+        Task::perform(crate::MainLayout::refresh_plotter_data_async(item, ts), Message::TaskPlotterDataDone)])
+        .chain(Task::done(Message::TaskRefreshDone));
+    }
+
+    Message::RefreshTickAsync(_) => {
+			log_mess!("Get data from OSRS wiki... this time async tick...");
+      let item = state.last_item.clone();
+      let ts = state.selected_timeseries.clone();
+      return Task::batch([Task::perform(crate::MainLayout::refresh_item_data_async(), Message::TaskItemDataDone),
+        Task::perform(crate::MainLayout::refresh_volume_data_async(), Message::TaskVolumeDataDone),
+        Task::perform(crate::MainLayout::refresh_latest_data_async(), Message::TaskLatestDataDone),
+        Task::perform(crate::MainLayout::refresh_plotter_data_async(item, ts), Message::TaskPlotterDataDone)])
+        .chain(Task::done(Message::TaskRefreshDone));
     }
 
     Message::TaskItemDataDone(result) => {
         match result {
             Ok(v) => {
                 log_mess!["Refresh: Mapping done. Found {} items", v.len()];
+                state.data = v;
+			          state.bond_sell_price = state.get_price_from_id(BOND_ID).unwrap_or_default().sell_price();
             }
             Err(err) => {
                 log_err!["Mapping refresh: {}", err];
@@ -129,8 +145,9 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 
     Message::TaskLatestDataDone(result) => {
         match result {
-            Ok(v) => {
+            Ok(latest) => {
                 log_mess!["Refresh: Latest done."];
+                state.latest_ge_data = latest;
             }
             Err(err) => {
                 log_err!["Latest refresh: {}", err];
@@ -140,8 +157,9 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 
     Message::TaskVolumeDataDone(result) => {
         match result {
-            Ok(v) => {
+            Ok(vol) => {
                 log_mess!["Refresh: Volume done."];
+                state.item_volume = vol
             }
             Err(err) => {
                 log_err!["Volume refresh: {}", err];
@@ -151,13 +169,22 @@ pub fn update(state: &mut crate::MainLayout, message: Message) -> Task<Message> 
 
     Message::TaskPlotterDataDone(result) => {
         match result {
-            Ok(v) => {
+            Ok(timedata) => {
                 log_mess!["Refresh: Plotter data done."];
+                state.plotter.change_label(state.last_item.clone().unwrap().name());
+                state.plotter.update_data(timedata);
             }
             Err(err) => {
                 log_err!["Plotter data refresh: {}", err];
             }
         }
+    }
+
+    Message::TaskRefreshDone => {
+      log_mess!["Refresh finished. Post-refresh logic..."];
+			state.create_combo_box_data();
+			state.calculate_best_alchemy();
+      log_mess!["Post-refresh logic done."];
     }
 
 		Message::EventOccurred(_event) => {
