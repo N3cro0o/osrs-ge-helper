@@ -34,7 +34,7 @@ using current GE prices. Users can use already created recipes as resources and 
   * ~Add better saving system~
   * ~Save options properly~
   * ~Make ConfigView look better~
-* ~App image~~
+* ~App image~
 * ~Write docs comments~
 * ~Add ItemView notifications system~
 * ~Notifications~
@@ -44,18 +44,20 @@ using current GE prices. Users can use already created recipes as resources and 
 * ~Fix layout being stretched while changing resolution~
 * ~Change API calls~
 * ~Add image embedding into executable~
-* Multithreading for syncing data
-  * Create async functions
-  * Create task chain
-* Linux port
+* ~Multithreading for syncing data~
+  * ~Create async functions~
+  * ~Create task chain~
+* ~Linux port~
+* Write Github Actions
 
 ### Optional
 
 * Localization
-* ItemView
+* ~ItemView~
   * ~Add bond view~
 * Notifications
   * Add system notifications (the popup window on the side of the screen)
 * Add button images
   * Member item filter
   * Save / favourite
+* Create build.rs 

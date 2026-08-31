@@ -208,7 +208,7 @@ impl structs::AppPages {
             text("Sound notification volume"),
             space::horizontal().width(Length::Fixed(25.0)),
             slider(0.0 ..= 1.0, state.extra_float, Message::ConfigChangeAudioVolume)
-                .step(0.001),
+                .step(0.001_f32),
             ]
             .spacing(APP_SPACING),
         space::vertical().height(Length::Fixed(25.0)),
