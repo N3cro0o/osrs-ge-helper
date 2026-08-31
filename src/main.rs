@@ -981,7 +981,7 @@ fn main() -> iced::Result<> {
 
   let mut icon_path = std::path::PathBuf::new();
   icon_path.push("img");
-  icon_path.push("icon.png");
+  icon_path.push("icon.ico");
 	let mut window_settings = iced::window::Settings::default();
 	window_settings.min_size = Some(Size::new(1280.0,720.0));
 	window_settings.size = conf_loaded.resolution();
